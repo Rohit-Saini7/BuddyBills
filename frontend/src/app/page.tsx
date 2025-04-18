@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function Home() {
@@ -30,9 +31,8 @@ export default function Home() {
   return (
     <main className='flex min-h-screen flex-col items-center justify-between p-24'>
       <div className='z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex'>
-        <h1>Welcome to BuddyBills!</h1>
+        <Image alt="BuddyBills' Logo" src="/assets/logo.svg" height={40} width={40} /><h1>Welcome to BuddyBills!</h1>
         <p>Backend API Status: {apiStatus}</p>
-        {/* Rest of default Next.js content */}
       </div>
     </main>
   );
