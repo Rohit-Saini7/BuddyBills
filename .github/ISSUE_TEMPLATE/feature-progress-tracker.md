@@ -2,7 +2,7 @@
 name: Feature Progress Tracker
 about: Describe a new feature and track its development progress.
 title: "[Story]: Brief description of the feature"
-labels: Story
+labels: 'status: backlog, story'
 assignees: ''
 
 ---
