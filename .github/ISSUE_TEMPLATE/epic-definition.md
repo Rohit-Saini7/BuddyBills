@@ -2,7 +2,7 @@
 name: Epic Definition
 about: Define a large initiative or body of work (Epic) and track its constituent
   issues.
-title: "[Epic]: High-level goal of the Epic"
+title: "[Epic]: "
 labels: epic
 assignees: Rohit-Saini7
 

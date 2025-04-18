@@ -1,7 +1,7 @@
 ---
 name: Feature Progress Tracker
 about: Describe a new feature and track its development progress.
-title: "[Story]: Brief description of the feature"
+title: "[Story]: "
 labels: story
 assignees: Rohit-Saini7
 
