@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common'; // Import NotFoundException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -10,12 +10,22 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) { }
 
-  // Find user by their unique Google ID
+  // --- Method to fetch current user based on ID from JWT ---
+  async findMeById(userId: string): Promise<User> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      // This case should be rare if the JWT is valid, but handle defensively
+      throw new NotFoundException('User not found.');
+    }
+    // The ClassSerializerInterceptor will handle converting this User entity
+    // to UserResponseDto based on the controller's return type hint.
+    return user;
+  }
+
+  // Keep other methods like findByGoogleId, createFromGoogleProfile, findByEmail, findById etc.
   async findByGoogleId(googleId: string): Promise<User | null> {
     return this.userRepository.findOneBy({ google_id: googleId });
   }
-
-  // Find user by email (useful for checking duplicates or finding members)
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOneBy({ email: email });
   }
@@ -35,8 +45,6 @@ export class UsersService {
     });
     return this.userRepository.save(newUser);
   }
-
-  // Find a user by internal ID (useful for JWT validation)
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOneBy({ id });
   }
