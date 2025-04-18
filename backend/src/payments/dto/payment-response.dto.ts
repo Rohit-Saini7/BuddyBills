@@ -1,4 +1,3 @@
-// backend/src/payments/dto/payment-response.dto.ts
 import { Exclude, Expose } from 'class-transformer';
 
 @Exclude()
