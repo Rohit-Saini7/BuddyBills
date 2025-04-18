@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { INestApplication } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import * as request from "supertest";
+import { App } from "supertest/types";
+import { AppModule } from "./../src/app.module";
 
-describe('AppController (e2e)', () => {
+describe("AppController (e2e)", () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -16,13 +16,13 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it("/ (GET)", () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get("/")
       .expect(200)
       .expect({
-        status: 'ok',
-        time: expect.stringMatch1ing(/.*/),
+        status: "ok",
+        time: expect.stringMatching(/.*/),
       });
   });
 });

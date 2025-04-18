@@ -1,26 +1,44 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "declaration": true,
     "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "baseUrl": ".",
+    "paths": {
+      "elements/*": ["./src/components/elements/*"],
+      "@components/*": ["./src/components/*"],
+      "@redux-hooks": ["./src/redux/hooks"],
+      "@redux/*": ["./src/redux/features/*"],
+      "@DummyData/*": ["./src/utils/DummyData/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@loading": ["./src/app/loading.tsx"],
+      "@loadingDotted": ["./src/app/loadingDotted.tsx"],
+      "@/*": ["./src/*"]
+    },
+    "pretty": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2022",
     "incremental": true,
     "plugins": [
       {
         "name": "next"
       }
-    ],
-    "paths": {
-      "@components/*": ["./src/*"]
-    }
+    ]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

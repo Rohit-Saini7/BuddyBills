@@ -7,7 +7,7 @@
   "jsxSingleQuote": false,
   "trailingComma": "es5",
   "bracketSpacing": true,
-  "jsxBracketSameLine": false,
+  "bracketSameLine": false,
   "arrowParens": "always",
   "proseWrap": "preserve",
   "htmlWhitespaceSensitivity": "css",
@@ -17,5 +17,10 @@
   "requirePragma": false,
   "vueIndentScriptAndStyle": false,
   "embeddedLanguageFormatting": "auto",
-  "objectWrap": "preserve"
+  "objectWrap": "preserve",
+  "singleAttributePerLine": false,
+  "overrides": [
+    { "files": ".*rc", "options": { "parser": "json" } },
+    { "files": ".nvmrc", "options": { "parser": "yaml" } }
+  ]
 }

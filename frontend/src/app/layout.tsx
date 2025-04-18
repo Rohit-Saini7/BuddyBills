@@ -25,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <title>BuddyBills</title>
         <link rel="icon" href="/assets/logo.svg" sizes="any" />
       </head>
       <body
