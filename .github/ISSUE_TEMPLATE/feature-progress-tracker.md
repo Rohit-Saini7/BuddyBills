@@ -2,8 +2,8 @@
 name: Feature Progress Tracker
 about: Describe a new feature and track its development progress.
 title: "[Story]: Brief description of the feature"
-labels: 'status: backlog, story'
-assignees: ''
+labels: story
+assignees: Rohit-Saini7
 
 ---
 

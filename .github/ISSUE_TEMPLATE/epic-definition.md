@@ -3,16 +3,11 @@ name: Epic Definition
 about: Define a large initiative or body of work (Epic) and track its constituent
   issues.
 title: "[Epic]: High-level goal of the Epic"
-labels: 'epic, status: backlog'
-assignees: ''
+labels: epic
+assignees: Rohit-Saini7
 
 ---
 
----
-name: 
-description: title: ""
-labels: ["epic", "status: planning"] # Add relevant default labels that exist in your repo
-assignees: '' # Optional: Assign Epic owner(s) e.g., 'username1'
 ---
 
 ## 🎯 Overall Goal / Problem Statement
