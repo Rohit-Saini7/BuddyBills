@@ -1,8 +1,7 @@
-import { ValidationPipe } from "@nestjs/common"; // Import ValidationPipe
+import { ClassSerializerInterceptor, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { NestFactory } from "@nestjs/core";
+import { NestFactory, Reflector } from "@nestjs/core";
 import { AppModule } from "./app.module";
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
@@ -11,18 +10,20 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api"); // Set API prefix
 
+  // Enable CORS for your frontend origin
   app.enableCors({
-    // Enable CORS for your frontend origin
     origin: frontendUrl,
   });
 
+  // Enable global validation
   app.useGlobalPipes(
-    // Enable global validation
     new ValidationPipe({
       whitelist: true, // Strip properties not in DTO
       transform: true, // Transform payloads to DTO instances
     })
   );
+
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   await app.listen(port);
   // eslint-disable-next-line no-console
