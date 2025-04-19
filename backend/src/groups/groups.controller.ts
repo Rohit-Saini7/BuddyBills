@@ -17,6 +17,7 @@ import { Request } from 'express';
 import { CreateExpenseDto } from 'src/expenses/dto/create-expense.dto';
 import { ExpenseResponseDto } from 'src/expenses/dto/expense-response.dto';
 import { ExpensesService } from 'src/expenses/expenses.service';
+import { BalanceResponseDto } from 'src/groups/dto/balance-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddGroupMemberDto } from './dto/add-group-member.dto'; // Import AddMember DTO
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -119,5 +120,16 @@ export class GroupsController {
     const requestingUserId = req.user.userId;
     // Service returns array of Expense entities, interceptor transforms them
     return this.expensesService.findAllForGroup(groupId, requestingUserId);
+  }
+
+  // --- Method to GET Group Balances ---
+  @Get(':groupId/balances') // GET /api/groups/:groupId/balances
+  async getGroupBalances(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<BalanceResponseDto[]> { // Returns array of BalanceResponseDto
+    const requestingUserId = req.user.userId;
+    // Service method calculates balances, interceptor formats response
+    return this.groupsService.getGroupBalances(groupId, requestingUserId);
   }
 }

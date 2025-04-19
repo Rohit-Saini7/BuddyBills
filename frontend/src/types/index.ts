@@ -39,5 +39,10 @@ export interface ExpenseResponseDto {
   // splits?: ExpenseSplitResponseDto[]; // Add later if needed
 }
 
+export interface BalanceResponseDto {
+  user: UserResponseDto;
+  netBalance: number; // Positive: User is owed; Negative: User owes
+}
+
 // Optional: Add ExpenseSplitResponseDto if you load splits
 // export interface ExpenseSplitResponseDto { ... }

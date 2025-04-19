@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ExpenseSplit } from 'src/expenses/entities/expense-split.entity';
+import { Expense } from 'src/expenses/entities/expense.entity';
+import { BalanceResponseDto } from 'src/groups/dto/balance-response.dto';
+import { Payment } from 'src/payments/entities/payment.entity';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity'; // Import User entity
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
@@ -24,6 +28,13 @@ export class GroupsService {
 
     @InjectRepository(User) // Inject User repository (Needs UsersModule setup)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Expense)
+    private readonly expenseRepository: Repository<Expense>,
+    @InjectRepository(ExpenseSplit)
+    private readonly expenseSplitRepository: Repository<ExpenseSplit>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
+
   ) { }
 
   // --- CREATE Group ---
@@ -125,7 +136,7 @@ export class GroupsService {
     addGroupMemberDto: AddGroupMemberDto,
     requestingUserId: string,
   ): Promise<GroupMember> {
-    const group = await this.findOneById(groupId, requestingUserId); // Check if requester has access to the group
+    await this.findOneById(groupId, requestingUserId); // Check if requester has access to the group
 
     // Find the user to add by email
     const userToAdd = await this.userRepository.findOneBy({ email: addGroupMemberDto.email });
@@ -160,5 +171,74 @@ export class GroupsService {
       where: { group_id: groupId },
       relations: ['user'], // Load the nested user object for each member
     });
+  }
+
+  // --- Calculate Group Balances ---
+  async getGroupBalances(groupId: string, requestingUserId: string): Promise<BalanceResponseDto[]> {
+    // 1. Verify access and get members (includes user details)
+    const members = await this.findGroupMembers(groupId, requestingUserId);
+    if (!members || members.length === 0) {
+      return []; // No members, no balances
+    }
+    members.map(m => m.user_id);
+
+    // 2. Fetch relevant financial data for this group
+    const expenses = await this.expenseRepository.find({ where: { group_id: groupId } });
+    // const splits = await this.expenseSplitRepository.find({ where: { group_id: groupId } }); // Assumes group_id is on splits - if not, join through expense
+    // NOTE: If group_id isn't directly on ExpenseSplit, you'd fetch splits via expense relations:
+    const expensesWithSplits = await this.expenseRepository.find({ where: { group_id: groupId }, relations: ['splits'] });
+    const splits = expensesWithSplits.flatMap(e => e.splits);
+
+    const payments = await this.paymentRepository.find({ where: { group_id: groupId } });
+
+    // 3. Calculate net balance for each member
+    const balances: { [userId: string]: number } = {};
+    members.forEach(member => {
+      balances[member.user_id] = 0; // Initialize balance for all members
+    });
+
+    // Process Expenses (Money Paid Out By User -> Increases Balance)
+    expenses.forEach(expense => {
+      // Ensure payer is still considered part of the group context for balance calculation
+      if (balances.hasOwnProperty(expense.paid_by_user_id)) {
+        // Convert amount back to number if necessary (depends on entity/transformer)
+        const amount = typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount;
+        balances[expense.paid_by_user_id] += amount;
+      }
+    });
+
+    // Process Expense Splits (Share Owed By User -> Decreases Balance)
+    splits.forEach(split => {
+      // Ensure the person owing is still considered part of the group context
+      if (balances.hasOwnProperty(split.owed_by_user_id)) {
+        const amount = typeof split.amount === 'string' ? parseFloat(split.amount) : split.amount;
+        balances[split.owed_by_user_id] -= amount;
+      }
+    });
+
+    // Process Payments (Money Sent -> Decreases Balance; Money Received -> Increases Balance)
+    payments.forEach(payment => {
+      const amount = typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount;
+      // Check if payer is relevant to current group balance context
+      if (balances.hasOwnProperty(payment.paid_by_user_id)) {
+        balances[payment.paid_by_user_id] -= amount;
+      }
+      // Check if payee is relevant to current group balance context
+      if (balances.hasOwnProperty(payment.paid_to_user_id)) {
+        balances[payment.paid_to_user_id] += amount;
+      }
+    });
+
+    // 4. Format the output using the DTO
+    const balanceResponse: BalanceResponseDto[] = members.map(member => {
+      // Round to 2 decimal places to avoid floating point representation issues in JSON
+      const netBalance = Math.round(balances[member.user_id] * 100) / 100;
+      return {
+        user: member.user, // Pass the nested user object (ClassSerializerInterceptor handles transforming it)
+        netBalance: netBalance,
+      };
+    });
+
+    return balanceResponse;
   }
 }

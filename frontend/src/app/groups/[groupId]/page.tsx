@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext"; // Import useAuth
 import { apiClient } from "@/lib/apiClient";
 import {
+  BalanceResponseDto,
   CreateExpenseDto,
   ExpenseResponseDto,
   GroupMemberResponseDto,
@@ -19,11 +20,12 @@ const fetchGroup = (url: string) => apiClient.get<GroupResponseDto>(url);
 const fetchMembers = (url: string) =>
   apiClient.get<GroupMemberResponseDto[]>(url);
 const fetchExpenses = (url: string) => apiClient.get<ExpenseResponseDto[]>(url); // Fetcher for expenses
+const fetchBalances = (url: string) => apiClient.get<BalanceResponseDto[]>(url); // Fetcher for balances
 
 export default function GroupDetailPage() {
   const params = useParams();
   const groupId = params.groupId as string;
-  const { user: loggedInUser } = useAuth(); // Get logged-in user info (needed for payer display)
+  const { user: loggedInUser, isLoading: isAuthLoading } = useAuth();
   const { mutate } = useSWRConfig();
 
   // --- State for Add Expense Form ---
@@ -60,7 +62,14 @@ export default function GroupDetailPage() {
     data: expenses,
     error: expensesError,
     isLoading: expensesLoading,
-  } = useSWR(expensesApiUrl, fetchExpenses); // SWR for expenses
+  } = useSWR(expensesApiUrl, fetchExpenses);
+
+  const balancesApiUrl = groupId ? `/groups/${groupId}/balances` : null;
+  const {
+    data: balances,
+    error: balancesError,
+    isLoading: balancesLoading,
+  } = useSWR(balancesApiUrl, fetchBalances);
 
   // --- Handlers ---
 
@@ -138,6 +147,8 @@ export default function GroupDetailPage() {
     }
   };
 
+  const isLoading = groupLoading || isAuthLoading;
+
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4">
@@ -148,18 +159,92 @@ export default function GroupDetailPage() {
         </div>
 
         {/* Group Details Loading/Error/Display */}
-        {groupLoading && <p>Loading group details...</p>}
+        {isLoading && <p>Loading group details...</p>}
         {groupError && (
           <div className="text-red-500 mb-4"> /* ... Error Display ... */ </div>
         )}
 
-        {!groupLoading && !groupError && group && (
-          <div>
+        {!isLoading && !groupError && group && (
+          <div className="space-y-6">
             <h1 className="text-2xl font-bold mb-4">{group.name}</h1>
-            {/* <p className="text-sm text-gray-600 mb-4">Created on: {new Date(group.createdAt).toLocaleString()}</p> */}{" "}
-            {/* Can remove if not needed */}
+            {/* --- Balances Section --- */}
+            <div className="p-4 border rounded bg-white shadow-sm">
+              <h2 className="text-lg font-semibold mb-3">Group Balances</h2>
+              {balancesLoading && <p>Calculating balances...</p>}
+              {balancesError && (
+                <p className="text-red-500">
+                  Error loading balances: {balancesError.message}
+                </p>
+              )}
+              {!balancesLoading && !balancesError && balances && (
+                <ul className="space-y-2">
+                  {balances.length === 0 ? (
+                    <p>No balances to show yet.</p>
+                  ) : (
+                    balances.map((balance) => {
+                      const isCurrentUser =
+                        balance.user.id === loggedInUser?.id;
+                      const balanceAmount = Math.abs(balance.netBalance); // Absolute value for display
+                      const isOwed = balance.netBalance > 0.005; // Is owed money (positive balance, handle floating point noise)
+                      const owesMoney = balance.netBalance < -0.005; // Owes money (negative balance)
+                      const isSettled = !isOwed && !owesMoney; // Essentially zero balance
+
+                      let balanceText = "";
+                      let textColor = "text-gray-600";
+
+                      if (isSettled) {
+                        balanceText = isCurrentUser
+                          ? "You are settled up"
+                          : `${balance.user.name || balance.user.email} is settled up`;
+                      } else if (isOwed) {
+                        balanceText = isCurrentUser
+                          ? `You are owed ₹${balanceAmount.toFixed(2)}`
+                          : `${balance.user.name || balance.user.email} is owed ₹${balanceAmount.toFixed(2)}`;
+                        textColor = "text-green-600";
+                      } else if (owesMoney) {
+                        balanceText = isCurrentUser
+                          ? `You owe ₹${balanceAmount.toFixed(2)}`
+                          : `${balance.user.name || balance.user.email} owes ₹${balanceAmount.toFixed(2)}`;
+                        textColor = "text-red-600";
+                      }
+
+                      return (
+                        <li
+                          key={balance.user.id}
+                          className="flex items-center justify-between p-2 border-b last:border-b-0"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={
+                                balance.user.avatar_url ||
+                                `https://ui-avatars.com/api/?name=${encodeURIComponent(balance.user.name || balance.user.email)}&background=random`
+                              }
+                              alt={balance.user.name || balance.user.email}
+                              className="w-8 h-8 rounded-full"
+                            />
+                            <span className="font-medium">
+                              {isCurrentUser
+                                ? "You"
+                                : balance.user.name || balance.user.email}
+                            </span>
+                          </div>
+                          <span className={`font-semibold ${textColor}`}>
+                            {balanceText.replace(
+                              `${balance.user.name || balance.user.email} `,
+                              ""
+                            )}{" "}
+                            {/* Show only status text */}
+                          </span>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              )}
+              {/* TODO: Add "Settle Up" button later */}
+            </div>
             {/* --- Add Expense Section --- */}
-            <div className="mb-6 p-4 border rounded bg-white shadow-sm">
+            <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Add New Expense</h2>
               <form onSubmit={handleAddExpense} className="space-y-3">
                 <div>
@@ -233,7 +318,7 @@ export default function GroupDetailPage() {
               </form>
             </div>
             {/* --- Expenses List Section --- */}
-            <div className="mb-6 p-4 border rounded bg-white shadow-sm">
+            <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Expenses</h2>
               {expensesLoading && <p>Loading expenses...</p>}
               {expensesError && (
@@ -279,7 +364,7 @@ export default function GroupDetailPage() {
               )}
             </div>
             {/* --- Members Section (from previous step) --- */}
-            <div className="mt-6 p-4 border rounded bg-white shadow-sm">
+            <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Members</h2>
               {/* ... Member list rendering ... */}
               {/* ... Add Member form ... */}

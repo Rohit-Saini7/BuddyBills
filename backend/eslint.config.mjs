@@ -1,10 +1,10 @@
 // @ts-check
 import eslint from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier/flat";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import * as regexpPlugin from "eslint-plugin-regexp";
 import globals from "globals";
 import tseslint, { parser as typescriptEslintParser } from "typescript-eslint";
-import * as regexpPlugin from "eslint-plugin-regexp";
-import eslintConfigPrettier from "eslint-config-prettier/flat";
 
 export default tseslint.config(
   {
@@ -34,6 +34,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
+      "no-prototype-builtins": "off",
       "no-console": ["error", { allow: ["warn", "error", "table", "info"] }],
       "no-multi-spaces": ["error"],
       "spaced-comment": [
