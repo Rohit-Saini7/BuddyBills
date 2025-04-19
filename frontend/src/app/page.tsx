@@ -1,5 +1,6 @@
 "use client";
 
+import LoginButton from "@components/LoginButton";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -38,6 +39,7 @@ export default function Home() {
           width={40}
         />
         <h1>Welcome to BuddyBills!</h1>
+        <LoginButton />
         <p>Backend API Status: {apiStatus}</p>
       </div>
     </main>

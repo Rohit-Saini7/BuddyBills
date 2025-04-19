@@ -8,14 +8,28 @@ import { Payment } from './src/payments/entities/payment.entity';
 import { User } from './src/users/entities/user.entity';
 
 // Ensure environment variables are loaded and valid before this point
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set.');
+const requiredEnvVars = [
+  'DB_HOST',
+  'DB_PORT',
+  'DB_USERNAME',
+  'DB_PASSWORD',
+  'DB_DATABASE',
+];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    // Ensure dotenv loaded the variable
+    throw new Error(`Missing required environment variable: ${envVar}`);
+  }
 }
-
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  url: process.env.DATABASE_URL,
-  // ssl: { rejectUnauthorized: false }, // Add if needed for Supabase connection
+  host: process.env.DB_HOST,
+  port: +(process.env.DB_PORT || 5432),
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  ssl: true,
+
   entities: [
     User,
     Group,

@@ -26,20 +26,23 @@ import { UsersModule } from "./users/users.module";
 
     // Database Module (TypeORM)
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule], // Depends on ConfigModule
+      imports: [ConfigModule], // Import ConfigModule to inject ConfigService
+      inject: [ConfigService], // Inject ConfigService
       useFactory: (configService: ConfigService) => ({
-        type: "postgres",
-        url: configService.get<string>("DATABASE_URL"), // Get DB URL from .env
-        // Uncomment the ssl line below if your Supabase/Postgres requires SSL connection
-        // and you encounter connection issues without it.
-        // ssl: {
-        //   rejectUnauthorized: false, // Necessary for some cloud providers/self-signed certs
-        // },
-        autoLoadEntities: true, // Automatically loads entities registered via forFeature() in modules
-        synchronize: false, // *** IMPORTANT: Set to false now that we are using migrations ***
-        logging: ["error", "warn"], // Configure logging levels (e.g., 'query', 'error', 'warn')
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        // List your entities here
+        // entities: [User, /* Other entities */],
+        entities: [__dirname + '/../**/*.entity{.ts,.js}'], // Or use auto-loading
+        synchronize: false,
+        ssl: true,
+        // ssl: configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false, // Supabase requires SSL in production
+        logging: true, // Enable for debugging DB queries
       }),
-      inject: [ConfigService], // Inject ConfigService into the factory function
     }),
 
     // --- Feature Modules ---

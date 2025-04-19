@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common'; // Import UnauthorizedException
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { Profile, Strategy } from 'passport-google-oauth20'; // No VerifyCallback needed
+import { User } from '../../users/entities/user.entity'; // Import User
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -14,26 +15,30 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientID: configService.get<string>('GOOGLE_CLIENT_ID') ?? '',
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') ?? '',
       callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL') ?? '',
-      scope: ['profile', 'email'], // Scopes we need from Google
-      passReqToCallback: true, // Pass request to the callback
+      scope: ['profile', 'email'],
     });
   }
 
-  // This method is called after successful Google authentication
+  // Corrected validate method for NestJS
   async validate(
     _accessToken: string,
-    _refreshToken: string, // Usually not needed here
+    _refreshToken: string,
     profile: Profile,
-    done: VerifyCallback,
-  ): Promise<any> {
+  ): Promise<User> { // Return the User object directly
     try {
       // Use AuthService to find or create the user based on the Google profile
       const user = await this.authService.validateUserByGoogleProfile(profile);
-      // Pass the user object to Passport, which will attach it to req.user in the callback controller
-      done(null, user);
+      if (!user) {
+        // Although authService should handle this, add a fallback check
+        throw new UnauthorizedException('Could not validate or create user from Google profile.');
+      }
+      // Return the user object. NestJS/Passport attaches this to req.user
+      return user;
     } catch (error) {
-      // Handle errors during user validation/creation
-      done(error, false);
+      // Log the original error for debugging if needed
+      console.error("Error during Google strategy validation:", error);
+      // Throw a standard NestJS exception
+      throw new UnauthorizedException('Authentication failed during Google validation.');
     }
   }
 }
