@@ -14,6 +14,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { CreateExpenseDto } from 'src/expenses/dto/create-expense.dto';
+import { ExpenseResponseDto } from 'src/expenses/dto/expense-response.dto';
+import { ExpensesService } from 'src/expenses/expenses.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddGroupMemberDto } from './dto/add-group-member.dto'; // Import AddMember DTO
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -30,7 +33,9 @@ interface AuthenticatedRequest extends Request {
 @UseInterceptors(ClassSerializerInterceptor) // Ensure responses are serialized correctly
 @Controller('groups')
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) { }
+  constructor(private readonly groupsService: GroupsService,
+    private readonly expensesService: ExpensesService,
+  ) { }
 
   @Post()
   async create(
@@ -92,4 +97,27 @@ export class GroupsController {
   }
 
   // --- Add DELETE /:groupId/members/:userId later ---
+
+  // --- Method to CREATE Expense within a Group ---
+  @Post(':groupId/expenses') // POST /api/groups/:groupId/expenses
+  async createExpense(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Body() createExpenseDto: CreateExpenseDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExpenseResponseDto> { // Return type uses Response DTO
+    const paidByUserId = req.user.userId;
+    // Service returns Expense entity, interceptor transforms it
+    return this.expensesService.createExpense(createExpenseDto, groupId, paidByUserId);
+  }
+
+  // --- Method to GET all Expenses for a Group ---
+  @Get(':groupId/expenses') // GET /api/groups/:groupId/expenses
+  async findAllExpensesForGroup(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ExpenseResponseDto[]> { // Returns an array of Response DTOs
+    const requestingUserId = req.user.userId;
+    // Service returns array of Expense entities, interceptor transforms them
+    return this.expensesService.findAllForGroup(groupId, requestingUserId);
+  }
 }

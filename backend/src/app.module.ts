@@ -13,6 +13,7 @@ import { GroupsModule } from "./groups/groups.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { UsersController } from './users.controller';
 import { UsersModule } from "./users/users.module";
+import { ExpensesController } from './expenses.controller';
 
 @Module({
   imports: [
@@ -54,7 +55,7 @@ import { UsersModule } from "./users/users.module";
     PaymentsModule,
   ],
   // Root controller (optional, usually for things like /health)
-  controllers: [AppController, UsersController],
+  controllers: [AppController, UsersController, ExpensesController],
   // Root service (optional)
   providers: [AppService],
 })
