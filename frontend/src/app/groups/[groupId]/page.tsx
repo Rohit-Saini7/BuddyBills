@@ -9,6 +9,7 @@ import {
   ExpenseResponseDto,
   GroupMemberResponseDto,
   GroupResponseDto,
+  MemberRemovalType,
   PaymentResponseDto,
   SplitType,
   UpdateGroupDto,
@@ -16,7 +17,7 @@ import {
 import EditExpenseModal from "@components/EditExpenseModal";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
@@ -29,6 +30,7 @@ const fetchBalances = (url: string) => apiClient.get<BalanceResponseDto[]>(url);
 
 export default function GroupDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const groupId = params.groupId as string;
   const { user: loggedInUser, isLoading: isAuthLoading } = useAuth();
   const { mutate } = useSWRConfig();
@@ -80,6 +82,13 @@ export default function GroupDetailPage() {
   const [editedGroupName, setEditedGroupName] = useState("");
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [isSavingName, setIsSavingName] = useState(false);
+  // Add state for remove/leave actions
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [removeMemberError, setRemoveMemberError] = useState<string | null>(
+    null
+  );
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const [leaveGroupError, setLeaveGroupError] = useState<string | null>(null);
 
   // --- SWR Hooks ---
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
@@ -446,6 +455,67 @@ export default function GroupDetailPage() {
       setIsSavingName(false);
     }
   };
+
+  // Removing a Member Handler
+  const handleRemoveMember = useCallback(
+    async (memberUserIdToRemove: string) => {
+      if (
+        !window.confirm(
+          "Are you sure you want to remove this member from the group?"
+        )
+      ) {
+        return;
+      }
+      if (!groupId) return;
+
+      setRemovingMemberId(memberUserIdToRemove); // Use user ID to track loading state
+      setRemoveMemberError(null);
+
+      try {
+        await apiClient.delete(
+          `/groups/${groupId}/members/${memberUserIdToRemove}`
+        );
+        // Mutate members list AND balances list
+        mutate(membersApiUrl);
+        mutate(balancesApiUrl);
+      } catch (error: any) {
+        console.error("Failed to remove member:", error);
+        setRemoveMemberError(`Failed to remove member: ${error.message}`);
+      } finally {
+        setRemovingMemberId(null);
+      }
+    },
+    [groupId, mutate, membersApiUrl, balancesApiUrl]
+  );
+
+  // Leaving the Group Handler
+  const handleLeaveGroup = useCallback(async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to leave this group? This action might not be reversible."
+      )
+    ) {
+      return;
+    }
+    if (!groupId) return;
+
+    setIsLeavingGroup(true);
+    setLeaveGroupError(null);
+
+    try {
+      await apiClient.delete(`/groups/${groupId}/members/me`);
+      // Mutate the main groups list SWR key (if you have one, e.g., '/groups')
+      mutate("/groups"); // Tells SWR controlling the dashboard list to refetch
+      // Redirect user away from the group they just left
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Failed to leave group:", error);
+      setLeaveGroupError(`Failed to leave group: ${error.message}`);
+      // Don't clear loading state on error, let user retry or navigate away
+      setIsLeavingGroup(false); // Or maybe clear loading state here too
+    }
+    // No finally needed if navigating away on success
+  }, [groupId, mutate, router]);
 
   const isLoading = groupLoading || isAuthLoading;
 
@@ -1091,19 +1161,159 @@ export default function GroupDetailPage() {
             </div>
             {/* --- Members Section (from previous step) --- */}
             <div className="p-4 border rounded bg-white shadow-sm">
-              <h2 className="text-lg font-semibold mb-3">Members</h2>
-              {/* ... Member list rendering ... */}
-              {/* ... Add Member form ... */}
-              {!membersLoading &&
-                !membersError &&
-                members /* Ensure this section is still here */ && (
-                  <ul className="space-y-2 mb-4">
-                    {/* ... mapping members ... */}
-                    {members.map((member) => (
-                      <li key={member.id}>...</li>
-                    ))}
-                  </ul>
-                )}
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-semibold">Members</h2>
+                {/* --- Leave Group Button --- */}
+                {loggedInUser?.id !== group.created_by_user_id && // Show only if NOT creator
+                  members?.find(
+                    (m) => m.user.id === loggedInUser?.id && !m.deletedAt
+                  ) && ( // Show only if active member
+                    <button
+                      onClick={handleLeaveGroup}
+                      disabled={isLeavingGroup}
+                      className="p-1 px-3 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {isLeavingGroup ? "Leaving..." : "Leave Group"}
+                    </button>
+                  )}
+              </div>
+              {leaveGroupError && (
+                <p className="text-red-500 mb-2 text-sm">{leaveGroupError}</p>
+              )}
+              {removeMemberError && (
+                <p className="text-red-500 mb-2 text-sm">{removeMemberError}</p>
+              )}
+
+              {membersLoading && <p>Loading members...</p>}
+              {membersError && (
+                <p className="text-red-500">
+                  Error loading members: {membersError.message}
+                </p>
+              )}
+              {!membersLoading && !membersError && members && (
+                <ul className="space-y-2 mb-4">
+                  {members.length === 0 ? (
+                    <p>No members found.</p> // Should not happen if creator is added
+                  ) : (
+                    members.map((member) => {
+                      const isCreator =
+                        member.user.id === group.created_by_user_id;
+                      const isCurrentUser = member.user.id === loggedInUser?.id;
+                      const isInactive = !!member.deletedAt; // Check if soft-deleted
+                      const canRemove =
+                        loggedInUser?.id === group.created_by_user_id &&
+                        !isCreator &&
+                        !isInactive; // Creator can remove others who are active
+
+                      let statusText = "";
+                      if (isInactive) {
+                        const date = new Date(
+                          member.deletedAt!
+                        ).toLocaleDateString();
+                        if (
+                          member.removalType ===
+                          MemberRemovalType.LEFT_VOLUNTARILY
+                        ) {
+                          statusText = `(Left on ${date})`;
+                        } else if (
+                          member.removalType ===
+                          MemberRemovalType.REMOVED_BY_CREATOR
+                        ) {
+                          statusText = `(Removed on ${date})`;
+                        } else {
+                          statusText = `(Inactive since ${date})`;
+                        }
+                      }
+
+                      return (
+                        <li
+                          key={member.id}
+                          className={`flex items-center justify-between space-x-3 p-2 border-b last:border-b-0 ${
+                            isInactive ? "opacity-50" : ""
+                          }`}
+                        >
+                          {/* Member Info */}
+                          <div className="flex items-center space-x-3 flex-grow min-w-0">
+                            {" "}
+                            {/* Ensure content doesn't push button out */}
+                            <img
+                              src={
+                                member.user.avatar_url ||
+                                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                  member.user.name || member.user.email
+                                )}&background=random`
+                              }
+                              alt={member.user.name || member.user.email}
+                              className="w-8 h-8 rounded-full flex-shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <span
+                                className={`font-medium ${
+                                  isInactive ? "line-through" : ""
+                                } truncate block`}
+                              >
+                                {member.user.name || "Unnamed User"}
+                              </span>
+                              <span
+                                className={`text-sm text-gray-500 ${
+                                  isInactive ? "line-through" : ""
+                                } truncate block`}
+                              >
+                                {member.user.email}
+                              </span>
+                              {isCreator && !isInactive && (
+                                <span className="text-xs text-blue-600 font-semibold">
+                                  {" "}
+                                  (Creator)
+                                </span>
+                              )}
+                              {isInactive && (
+                                <span className="text-xs text-gray-500 italic block">
+                                  {statusText}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Remove Button */}
+                          {canRemove && (
+                            <button
+                              onClick={() => handleRemoveMember(member.user.id)}
+                              disabled={removingMemberId === member.user.id}
+                              className="p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 flex-shrink-0"
+                              title={`Remove ${
+                                member.user.name || member.user.email
+                              }`}
+                              aria-label={`Remove ${
+                                member.user.name || member.user.email
+                              }`}
+                            >
+                              {removingMemberId === member.user.id ? (
+                                <span className="text-xs">...</span>
+                              ) : (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg> // Minus circle icon
+                              )}
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              )}
+              {/* Add Member Form */}
               <form onSubmit={handleAddMember} className="mt-4 pt-4 border-t">
                 <h3 className="text-md font-semibold mb-2">Add New Member</h3>
                 <div className="flex space-x-2">

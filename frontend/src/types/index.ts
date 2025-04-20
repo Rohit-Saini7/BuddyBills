@@ -5,6 +5,11 @@ export enum SplitType {
   SHARE = 'SHARE',
 }
 
+export enum MemberRemovalType {
+  REMOVED_BY_CREATOR = 'REMOVED_BY_CREATOR',
+  LEFT_VOLUNTARILY = 'LEFT_VOLUNTARILY',
+}
+
 export interface UserResponseDto {
   id: string;
   email: string;
@@ -18,6 +23,10 @@ export interface GroupMemberResponseDto {
   group_id: string;
   joinedAt: string;
   user: UserResponseDto;
+  deletedAt?: string | null;
+  removalType?: MemberRemovalType | null;
+  removedByUserId?: string | null;
+
 }
 
 export interface UpdateGroupDto {

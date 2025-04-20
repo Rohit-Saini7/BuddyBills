@@ -112,7 +112,26 @@ export class GroupsController {
     return this.groupsService.findGroupMembers(groupId, req.user.userId);
   }
 
-  // --- Add DELETE /:groupId/members/:userId later ---
+  @Delete(':groupId/members/me') // Use '/me' convention for self-action
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async leaveGroup(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<void> {
+    await this.groupsService.leaveGroup(groupId, req.user.userId);
+  }
+
+  // --- DELETE /:groupId/members/:userId ---
+  @Delete(':groupId/members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT) // Return 204 No Content on success
+  async removeMember(
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Param('userId', ParseUUIDPipe) userIdToRemove: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<void> {
+    const requestingUserId = req.user.userId;
+    await this.groupsService.removeMember(groupId, userIdToRemove, requestingUserId);
+  }
 
   // --- Method to CREATE Expense within a Group ---
   @Post(":groupId/expenses") // POST /api/groups/:groupId/expenses

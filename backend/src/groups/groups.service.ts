@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Expense } from 'src/expenses/entities/expense.entity';
 import { BalanceResponseDto } from 'src/groups/dto/balance-response.dto';
+import { MemberRemovalType } from 'src/groups/dto/member-removal-type.enum';
 import { Payment } from 'src/payments/entities/payment.entity';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity'; // Import User entity
@@ -22,16 +23,12 @@ export class GroupsService {
   constructor(
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
-
-    @InjectRepository(GroupMember) // Inject GroupMember repository
+    @InjectRepository(GroupMember)
     private readonly groupMemberRepository: Repository<GroupMember>,
-
-    @InjectRepository(User) // Inject User repository (Needs UsersModule setup)
+    @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Expense)
     private readonly expenseRepository: Repository<Expense>,
-    // @InjectRepository(ExpenseSplit)
-    // private readonly expenseSplitRepository: Repository<ExpenseSplit>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
 
@@ -163,85 +160,227 @@ export class GroupsService {
     addGroupMemberDto: AddGroupMemberDto,
     requestingUserId: string,
   ): Promise<GroupMember> {
-    await this.findOneById(groupId, requestingUserId); // Check if requester has access to the group
+    // 1. Find group and verify requester is the creator
+    const group = await this.groupRepository.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException(`Group "${groupId}" not found.`);
+    if (group.created_by_user_id !== requestingUserId) {
+      throw new ForbiddenException('Only the group creator can add members.');
+    }
 
-    // Find the user to add by email
+    // 2. Find the user to add by email
     const userToAdd = await this.userRepository.findOneBy({ email: addGroupMemberDto.email });
     if (!userToAdd) {
       throw new NotFoundException(`User with email "${addGroupMemberDto.email}" not found.`);
     }
 
-    // Check if user is already a member
-    const existingMembership = await this.groupMemberRepository.findOneBy({
-      group_id: groupId,
-      user_id: userToAdd.id
-    });
-    if (existingMembership) {
-      throw new BadRequestException(`User "${addGroupMemberDto.email}" is already a member of this group.`);
+    // Cannot add the creator (they are added automatically on group creation)
+    if (userToAdd.id === requestingUserId) {
+      throw new BadRequestException('Creator is already implicitly a member.');
     }
 
-    // Add the new member
-    const newMembership = this.groupMemberRepository.create({
-      group_id: groupId,
-      user_id: userToAdd.id,
+    // 3. Check for ANY existing membership (active or soft-deleted)
+    const existingMembership = await this.groupMemberRepository.findOne({
+      where: {
+        group_id: groupId,
+        user_id: userToAdd.id,
+      },
+      withDeleted: true,
     });
-    return this.groupMemberRepository.save(newMembership);
+
+    // 4. Handle based on existing membership status
+    if (existingMembership) {
+      if (existingMembership.deletedAt === null) {
+        // Membership exists and is ACTIVE
+        throw new BadRequestException(`User "${addGroupMemberDto.email}" is already an active member of this group.`);
+      } else {
+        // Membership exists but is INACTIVE (soft-deleted) - Reactivate it!
+        existingMembership.deletedAt = null;
+        existingMembership.removalType = null;
+        existingMembership.removedByUserId = null;
+        // We keep the original joinedAt date
+
+        try {
+          // Save the existing record with nulled fields to reactivate
+          return await this.groupMemberRepository.save(existingMembership);
+        } catch (error) {
+          console.error("Error reactivating member:", error);
+          throw new InternalServerErrorException('Could not reactivate member.');
+        }
+      }
+    } else {
+      // No previous membership found - Create a new one
+      const newMembership = this.groupMemberRepository.create({
+        group_id: groupId,
+        user_id: userToAdd.id,
+        // joinedAt is set by default by the database/entity
+      });
+      try {
+        return await this.groupMemberRepository.save(newMembership);
+      } catch (error) {
+        // Handle potential unique constraint violation if race condition happened (unlikely)
+        console.error("Error adding new member:", error);
+        throw new InternalServerErrorException('Could not add new member.');
+      }
+    }
   }
 
-  // --- Find Group Members (Helper/Potential Endpoint) ---
+  // --- Find Group Members (Include Soft-Deleted) ---
   async findGroupMembers(groupId: string, requestingUserId: string): Promise<GroupMember[]> {
-    // First, ensure the requesting user is part of the group
-    await this.findOneById(groupId, requestingUserId);
+    // 1. Ensure requesting user is (or was) part of the group to view members
+    //    (Or just check if they are currently active?) Let's allow viewing if ever a member.
+    //    Need a check here - findOneById checks active membership. Let's check manually.
+    const requesterMembership = await this.groupMemberRepository.findOne({
+      where: { group_id: groupId, user_id: requestingUserId },
+      withDeleted: true // Allow even inactive members to view member list? Or only active? Let's allow active only.
+    });
+    if (!requesterMembership || requesterMembership.deletedAt) { // Check active status
+      throw new ForbiddenException('You do not have access to view members of this group.');
+    }
+    // NOTE: findOneById used previously also works if that's preferred
 
-    // Then, fetch all members with user details
+    // 2. Fetch all members (active and inactive) with user details
     return this.groupMemberRepository.find({
       where: { group_id: groupId },
-      relations: ['user'], // Load the nested user object for each member
+      withDeleted: true,
+      relations: ['user'],
+      order: {
+        deletedAt: 'ASC',
+        joinedAt: 'ASC'
+      }
     });
   }
 
-  // --- Calculate Group Balances ---
-  async getGroupBalances(groupId: string, requestingUserId: string): Promise<BalanceResponseDto[]> {
-    // 1. Verify access and get members (includes user details)
-    const members = await this.findGroupMembers(groupId, requestingUserId);
-    if (!members || members.length === 0) {
-      return []; // No members, no balances
-    }
-    members.map(m => m.user_id);
+  // --- REMOVE Member from Group (by Creator) ---
+  async removeMember(
+    groupId: string,
+    userIdToRemove: string,
+    requestingUserId: string,
+  ): Promise<void> {
 
-    // 2. Fetch relevant financial data for this group
+    // 1. Find the group first
+    const group = await this.groupRepository.findOneBy({ id: groupId });
+    if (!group) {
+      throw new NotFoundException(`Group with ID "${groupId}" not found.`);
+    }
+
+    // 2. Authorization: Check if the requester is the group creator
+    if (group.created_by_user_id !== requestingUserId) {
+      throw new ForbiddenException('Only the group creator can remove members.');
+    }
+
+    // 3. Prevent creator from removing themselves via this method
+    if (userIdToRemove === requestingUserId) {
+      throw new BadRequestException('Creator cannot remove themselves using this method. Use "Leave Group" or "Delete Group" functionality.');
+    }
+
+    // 4. Find the specific membership record to delete
+    const membership = await this.groupMemberRepository.findOne({
+      where: { group_id: groupId, user_id: userIdToRemove },
+      withDeleted: true // Check even if already deleted to prevent double action/give correct error
+    });
+
+    if (!membership) throw new NotFoundException(`User "${userIdToRemove}" is not a member.`);
+    if (membership.deletedAt) throw new BadRequestException(`User "${userIdToRemove}" is already removed/inactive in this group.`); // Already deleted
+
+    // 5. Delete the membership record
+    membership.deletedAt = new Date();
+    membership.removalType = MemberRemovalType.REMOVED_BY_CREATOR;
+    membership.removedByUserId = requestingUserId;
+
+    try {
+      await this.groupMemberRepository.save(membership); // Save updates deletedAt automatically via decorator? Or sets it here. Let's assume save works.
+      // If save doesn't trigger @DeleteDateColumn logic, use softRemove after save:
+      // await this.groupMemberRepository.softRemove(membership); // This might overwrite deletedAt again
+      // Let's rely on save() updating the deletedAt field we manually set.
+    } catch (error) {
+      console.error("Error soft deleting member:", error);
+      throw new InternalServerErrorException('Could not remove member.');
+    }
+
+    // Note: This action doesn't automatically settle balances involving the removed user.
+    // Their past contributions/splits will still exist until expenses are deleted/edited,
+    // but they won't be included in *future* equal splits or balance calculations run after removal.
+  }
+
+  // --- LEAVE Group (Soft Delete by Member) ---
+  async leaveGroup(groupId: string, requestingUserId: string): Promise<void> {
+    // 1. Find group (needed for creator check)
+    const group = await this.groupRepository.findOneBy({ id: groupId });
+    if (!group) throw new NotFoundException(`Group "${groupId}" not found.`);
+
+    // 2. Prevent creator from leaving (they should delete the group) - adjust rule if needed
+    if (group.created_by_user_id === requestingUserId) {
+      throw new BadRequestException('Group creator cannot leave the group. Please delete the group instead.');
+      // Alternative: Allow leaving if not last member, but need logic to reassign creator or handle ownerless groups? Simpler to restrict for now.
+    }
+
+    // 3. Find the user's membership record
+    const membership = await this.groupMemberRepository.findOne({
+      where: { group_id: groupId, user_id: requestingUserId },
+      withDeleted: true
+    });
+
+    if (!membership) throw new NotFoundException(`You are not a member of group "${groupId}".`);
+    if (membership.deletedAt) throw new BadRequestException(`You are already inactive in this group.`);
+
+    // 4. Perform SOFT delete
+    membership.deletedAt = new Date();
+    membership.removalType = MemberRemovalType.LEFT_VOLUNTARILY;
+    membership.removedByUserId = null; // User initiated it themselves
+
+    try {
+      await this.groupMemberRepository.save(membership);
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      throw new InternalServerErrorException('Could not leave group.');
+    }
+  }
+
+  // --- Calculate Group Balances (Based on Active Members) ---
+  async getGroupBalances(groupId: string, requestingUserId: string): Promise<BalanceResponseDto[]> {
+    // 1. Verify access (implicitly checks active membership via findOneById/isMember)
+    await this.findOneById(groupId, requestingUserId); // Or use isMember check
+
+    // 2. Get *ALL* members (active and inactive) to find their user IDs for filtering financial later if needed
+    const allMemberships = await this.groupMemberRepository.find({
+      where: { group_id: groupId },
+      relations: ['user'], // Need user details for the final output
+      withDeleted: true,
+    });
+    if (!allMemberships || allMemberships.length === 0) return [];
+
+    // 3. Fetch relevant financial data
     const expenses = await this.expenseRepository.find({ where: { group_id: groupId }, withDeleted: true });
     // const splits = await this.expenseSplitRepository.find({ where: { group_id: groupId } }); // Assumes group_id is on splits - if not, join through expense
     // NOTE: If group_id isn't directly on ExpenseSplit, you'd fetch splits via expense relations:
     const expensesWithSplits = await this.expenseRepository.find({ where: { group_id: groupId }, relations: ['splits'] });
     const splits = expensesWithSplits.flatMap(e => e.splits);
-
     const payments = await this.paymentRepository.find({ where: { group_id: groupId } });
-    const deletedExpenseIds = new Set(
-      expenses.filter(e => e.deletedAt !== null).map(e => e.id)
-    );
-    // 3. Calculate net balance for each member
-    const balances: { [userId: string]: number } = {};
-    members.forEach(member => {
-      balances[member.user_id] = 0; // Initialize balance for all members
-    });
+    const deletedExpenseIds = new Set(expenses.filter(e => e.deletedAt !== null).map(e => e.id));
 
-    // Process Expenses (Money Paid Out By User -> Increases Balance)
+    // 4. Calculate net balance for *ALL* users involved in financial for this group
+    const balances: { [userId: string]: number } = {};
+
+    // Initialize balances for involved users
+    const involvedUserIds = new Set([
+      ...expenses.map(e => e.paid_by_user_id),
+      ...splits.map(s => s.owed_by_user_id),
+      ...payments.map(p => p.paid_by_user_id),
+      ...payments.map(p => p.paid_to_user_id)
+    ]);
+    involvedUserIds.forEach(id => { balances[id] = 0; });
+
+    // Process NON-DELETED Expenses
     expenses.forEach(expense => {
-      // Ensure payer is still considered part of the group context for balance calculation
       if (expense.deletedAt === null && balances.hasOwnProperty(expense.paid_by_user_id)) {
-        // Convert amount back to number if necessary (depends on entity/transformer)
-        const amount = typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount;
-        balances[expense.paid_by_user_id] += amount;
+        balances[expense.paid_by_user_id] += Number(expense.amount);
       }
     });
 
-    // Process Expense Splits (Share Owed By User -> Decreases Balance)
+    // Process NON-DELETED Expense Splits
     splits.forEach(split => {
-      // Ensure the person owing is still considered part of the group context
       if (!deletedExpenseIds.has(split.expense_id) && balances.hasOwnProperty(split.owed_by_user_id)) {
-        const amount = typeof split.amount === 'string' ? parseFloat(split.amount) : split.amount;
-        balances[split.owed_by_user_id] -= amount;
+        balances[split.owed_by_user_id] -= Number(split.amount);
       }
     });
 
@@ -258,15 +397,22 @@ export class GroupsService {
       }
     });
 
-    // 4. Format the output using the DTO
-    const balanceResponse: BalanceResponseDto[] = members.map(member => {
-      // Round to 2 decimal places to avoid floating point representation issues in JSON
-      const netBalance = Math.round(balances[member.user_id] * 100) / 100;
-      return {
-        user: member.user, // Pass the nested user object (ClassSerializerInterceptor handles transforming it)
-        netBalance: netBalance,
-      };
+    // 5. Format output ONLY for members who are CURRENTLY ACTIVE
+    const balanceResponse: BalanceResponseDto[] = [];
+    allMemberships.forEach(member => {
+      // Include only if the member is currently active (not soft-deleted)
+      if (member.deletedAt === null) {
+        const userId = member.user_id;
+        const netBalance = Math.round((balances[userId] || 0) * 100) / 100; // Default to 0 if user had no activity
+        balanceResponse.push({
+          user: member.user, // Pass the nested user object
+          netBalance: netBalance,
+        });
+      }
     });
+
+    // Optionally sort the final response
+    balanceResponse.sort((a, b) => (a.user.name || a.user.email).localeCompare(b.user.name || b.user.email));
 
     return balanceResponse;
   }
