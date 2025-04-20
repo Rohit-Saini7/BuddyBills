@@ -16,7 +16,7 @@ import {
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
 // --- Fetchers ---
@@ -61,6 +61,13 @@ export default function GroupDetailPage() {
   );
   const [isRecordingPayment, setIsRecordingPayment] = useState(false);
   const [recordPaymentError, setRecordPaymentError] = useState<string | null>(
+    null
+  );
+
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
+    null
+  ); // Track which expense is being deleted
+  const [deleteExpenseError, setDeleteExpenseError] = useState<string | null>(
     null
   );
 
@@ -235,7 +242,7 @@ export default function GroupDetailPage() {
     }
   };
 
-  // --- Handler for Exact Split Input Changes ---
+  // Exact Split Input Changes Handler
   const handleExactSplitChange = (userId: string, value: string) => {
     // Allow empty string, numbers, and one decimal point
     if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
@@ -293,6 +300,40 @@ export default function GroupDetailPage() {
       setIsRecordingPayment(false);
     }
   };
+
+  // Deleting Expense Handler
+  const handleDeleteExpense = useCallback(
+    async (expenseId: string) => {
+      // Simple confirmation dialog
+      if (
+        !window.confirm(
+          "Are you sure you want to delete this expense? This action cannot be undone."
+        )
+      ) {
+        return;
+      }
+
+      setDeletingExpenseId(expenseId); // Indicate loading for this specific expense
+      setDeleteExpenseError(null);
+
+      try {
+        await apiClient.delete(`/expenses/${expenseId}`);
+
+        // IMPORTANT: Mutate (re-fetch) both expenses AND balances
+        mutate(expensesApiUrl);
+        mutate(balancesApiUrl);
+
+        // Optional: Show success feedback (e.g., toast notification)
+      } catch (error: any) {
+        console.error("Failed to delete expense:", error);
+        setDeleteExpenseError(`Failed to delete expense: ${error.message}`);
+        // Optional: Show error feedback (e.g., toast notification)
+      } finally {
+        setDeletingExpenseId(null); // Stop loading indicator for this expense
+      }
+    },
+    [groupId, mutate, expensesApiUrl, balancesApiUrl]
+  ); // Add dependencies
 
   const isLoading = groupLoading || isAuthLoading;
 
@@ -644,6 +685,13 @@ export default function GroupDetailPage() {
             {/* --- Expenses List Section --- */}
             <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Expenses</h2>
+              {/* Display general delete error if any */}
+              {deleteExpenseError && (
+                <p className="text-red-500 mb-2 text-sm">
+                  {deleteExpenseError}
+                </p>
+              )}
+
               {expensesLoading && <p>Loading expenses...</p>}
               {expensesError && (
                 <p className="text-red-500">
@@ -658,8 +706,10 @@ export default function GroupDetailPage() {
                     expenses.map((expense) => (
                       <li
                         key={expense.id}
-                        className="p-3 border-b flex justify-between items-center"
+                        className="p-3 border-b flex justify-between items-center group hover:bg-gray-50"
                       >
+                        {/* Added group class for hover effect */}
+                        {/* Expense Details */}
                         <div>
                           <p className="font-medium">{expense.description}</p>
                           <p className="text-sm text-gray-500">
@@ -672,15 +722,46 @@ export default function GroupDetailPage() {
                             on{" "}
                             {new Date(
                               expense.transaction_date + "T00:00:00"
-                            ).toLocaleDateString()}{" "}
-                            {/* Add time part for correct local date */}
+                            ).toLocaleDateString()}
                           </p>
                         </div>
-                        <span className="font-semibold text-lg">
-                          ₹{expense.amount.toFixed(2)}{" "}
-                          {/* Format amount - consider locale later */}
-                        </span>
-                        {/* TODO: Add view details/edit/delete buttons later */}
+                        {/* Amount and Delete Button */}
+                        <div className="flex items-center space-x-3">
+                          <span className="font-semibold text-lg">
+                            ₹{expense.amount.toFixed(2)}
+                          </span>
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            disabled={deletingExpenseId === expense.id} // Disable only the button being clicked
+                            className={`p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 ${deletingExpenseId === expense.id ? "animate-pulse" : ""}`} // Basic loading indicator via pulse
+                            title="Delete Expense"
+                            aria-label={`Delete expense: ${expense.description}`}
+                          >
+                            {deletingExpenseId === expense.id ? (
+                              // Simple text loading indicator
+                              <span className="text-xs">Deleting...</span>
+                            ) : (
+                              // Trash icon (requires an icon library like react-icons or heroicons)
+                              // Replace with your preferred icon component or text
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                          {/* TODO: Add Edit Button Later */}
+                        </div>
                       </li>
                     ))
                   )}

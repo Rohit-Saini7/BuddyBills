@@ -193,16 +193,83 @@ export class ExpensesService {
     // 2. Fetch expenses, ordered by date, include payer details
     return this.expenseRepository.find({
       where: { group_id: groupId },
+      withDeleted: true,
       relations: {
         paidBy: true, // Load the User object associated with paidBy
         // splits: { owedBy: true } // Optionally load splits and their users if needed immediately
       },
       order: {
-        transaction_date: "DESC", // Show newest expenses first
+        deletedAt: "ASC",
+        transaction_date: "DESC",
         createdAt: "DESC",
       },
     });
   }
 
-  // --- Add Update / Delete methods later ---
+  // --- DELETE Expense ---
+  async removeExpense(expenseId: string, requestingUserId: string): Promise<void> {
+    // 1. Find the expense and the group it belongs to
+    const expense = await this.expenseRepository.findOne({
+      where: { id: expenseId },
+      // No need to load relations like 'group' if only groupId is needed for auth check
+      select: ['id', 'group_id', 'paid_by_user_id'] // Select only necessary fields
+    });
+
+    if (!expense) {
+      throw new NotFoundException(`Expense with ID "${expenseId}" not found.`);
+    }
+
+    // 2. Check Authorization: Allow any member of the group to delete for now
+    //    (Alternatively, only allow the payer or group creator)
+    const canAccess = await this.groupsService.isMember(expense.group_id, requestingUserId);
+    if (!canAccess) {
+      // If findOneById in groupsService throws ForbiddenException, that could also work
+      throw new ForbiddenException('You do not have permission to delete expenses in this group.');
+    }
+
+    // Optional stricter check: Only allow payer to delete?
+    // if (expense.paid_by_user_id !== requestingUserId) {
+    //     throw new ForbiddenException('Only the user who paid for the expense can delete it.');
+    // }
+
+    // 3. Delete the expense
+    // Because of 'ON DELETE CASCADE' in the database,
+    // related expense_splits should be deleted automatically by Postgres.
+    const deleteResult = await this.expenseRepository.delete({ id: expenseId });
+
+    if (deleteResult.affected === 0) {
+      // Should not happen if findOne succeeded, but good safety check
+      throw new NotFoundException(`Expense with ID "${expenseId}" could not be deleted.`);
+    }
+    // No return value needed for successful delete
+  }
+
+  async softRemoveExpense(expenseId: string, requestingUserId: string): Promise<void> {
+    // 1. Find the expense to ensure it exists
+    const expense = await this.expenseRepository.findOne({
+      where: { id: expenseId },
+      select: ['id', 'group_id', 'paid_by_user_id'], // Select necessary fields
+    });
+
+    if (!expense) {
+      throw new NotFoundException(`Expense with ID "${expenseId}" not found.`);
+    }
+
+    // 2. Check Authorization: ONLY the user who paid can soft-delete
+    if (expense.paid_by_user_id !== requestingUserId) {
+      throw new ForbiddenException('Only the user who paid for the expense can delete it.');
+    }
+
+    // 3. Perform soft delete using TypeORM's built-in method
+    const deleteResult = await this.expenseRepository.softDelete({ id: expenseId });
+
+    if (deleteResult.affected === 0) {
+      throw new NotFoundException(`Expense with ID "${expenseId}" could not be soft-deleted.`);
+    }
+
+    // Note: Associated ExpenseSplits remain in the DB (not hard deleted by cascade).
+    // Balance calculation logic needs to ignore splits related to soft-deleted expenses.
+  }
+
+  // --- Add Update methods later ---
 }

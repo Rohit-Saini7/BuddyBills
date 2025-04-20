@@ -190,14 +190,16 @@ export class GroupsService {
     members.map(m => m.user_id);
 
     // 2. Fetch relevant financial data for this group
-    const expenses = await this.expenseRepository.find({ where: { group_id: groupId } });
+    const expenses = await this.expenseRepository.find({ where: { group_id: groupId }, withDeleted: true });
     // const splits = await this.expenseSplitRepository.find({ where: { group_id: groupId } }); // Assumes group_id is on splits - if not, join through expense
     // NOTE: If group_id isn't directly on ExpenseSplit, you'd fetch splits via expense relations:
     const expensesWithSplits = await this.expenseRepository.find({ where: { group_id: groupId }, relations: ['splits'] });
     const splits = expensesWithSplits.flatMap(e => e.splits);
 
     const payments = await this.paymentRepository.find({ where: { group_id: groupId } });
-
+    const deletedExpenseIds = new Set(
+      expenses.filter(e => e.deletedAt !== null).map(e => e.id)
+    );
     // 3. Calculate net balance for each member
     const balances: { [userId: string]: number } = {};
     members.forEach(member => {
@@ -207,7 +209,7 @@ export class GroupsService {
     // Process Expenses (Money Paid Out By User -> Increases Balance)
     expenses.forEach(expense => {
       // Ensure payer is still considered part of the group context for balance calculation
-      if (balances.hasOwnProperty(expense.paid_by_user_id)) {
+      if (expense.deletedAt === null && balances.hasOwnProperty(expense.paid_by_user_id)) {
         // Convert amount back to number if necessary (depends on entity/transformer)
         const amount = typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount;
         balances[expense.paid_by_user_id] += amount;
@@ -217,7 +219,7 @@ export class GroupsService {
     // Process Expense Splits (Share Owed By User -> Decreases Balance)
     splits.forEach(split => {
       // Ensure the person owing is still considered part of the group context
-      if (balances.hasOwnProperty(split.owed_by_user_id)) {
+      if (!deletedExpenseIds.has(split.expense_id) && balances.hasOwnProperty(split.owed_by_user_id)) {
         const amount = typeof split.amount === 'string' ? parseFloat(split.amount) : split.amount;
         balances[split.owed_by_user_id] -= amount;
       }

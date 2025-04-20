@@ -2,6 +2,7 @@ import { SplitType } from 'src/expenses/dto/expense-split.type';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -55,6 +56,9 @@ export class Expense {
 
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
+
+  @DeleteDateColumn({ type: 'timestamp with time zone', nullable: true })
+  deletedAt?: Date | null;
 
   // --- Relationships ---
 
