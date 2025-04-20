@@ -5,9 +5,11 @@ import { apiClient } from "@/lib/apiClient";
 import {
   BalanceResponseDto,
   CreateExpenseDto,
+  CreatePaymentDto,
   ExpenseResponseDto,
   GroupMemberResponseDto,
   GroupResponseDto,
+  PaymentResponseDto,
 } from "@/types";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
@@ -41,6 +43,17 @@ export default function GroupDetailPage() {
   const [memberEmail, setMemberEmail] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
+
+  // --- State for Record Payment Form ---
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paidToUserId, setPaidToUserId] = useState(""); // Store the ID of the selected payee
+  const [paymentDate, setPaymentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [recordPaymentError, setRecordPaymentError] = useState<string | null>(
+    null
+  );
 
   // --- SWR Hooks ---
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
@@ -147,7 +160,58 @@ export default function GroupDetailPage() {
     }
   };
 
+  // Record Payment Handler
+  const handleRecordPayment = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+    const amountNumber = parseFloat(paymentAmount);
+
+    if (!paidToUserId) {
+      setRecordPaymentError("Please select who you paid.");
+      return;
+    }
+    if (!paymentAmount || isNaN(amountNumber) || amountNumber <= 0) {
+      setRecordPaymentError("Please enter a valid positive amount.");
+      return;
+    }
+    if (!groupId || !loggedInUser) return; // Should not happen if page loads correctly
+
+    setIsRecordingPayment(true);
+    setRecordPaymentError(null);
+
+    const paymentData: CreatePaymentDto = {
+      amount: amountNumber,
+      paid_to_user_id: paidToUserId,
+      payment_date: paymentDate, // Send the selected date
+    };
+
+    try {
+      await apiClient.post<PaymentResponseDto>(
+        `/groups/${groupId}/payments`,
+        paymentData
+      );
+
+      // Clear form on success
+      setPaymentAmount("");
+      setPaidToUserId("");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
+
+      // --- IMPORTANT: Revalidate balances ---
+      mutate(balancesApiUrl);
+      // Optionally mutate a payments list if you display one: mutate(`/groups/${groupId}/payments`);
+    } catch (error: any) {
+      console.error("Failed to record payment:", error);
+      setRecordPaymentError(error.message || "Failed to record payment.");
+    } finally {
+      setIsRecordingPayment(false);
+    }
+  };
+
   const isLoading = groupLoading || isAuthLoading;
+
+  const otherMembers =
+    members?.filter((m) => m.user.id !== loggedInUser?.id) || [];
 
   return (
     <ProtectedLayout>
@@ -242,6 +306,93 @@ export default function GroupDetailPage() {
                 </ul>
               )}
               {/* TODO: Add "Settle Up" button later */}
+            </div>
+            {/* --- Record Payment Section --- */}
+            <div className="p-4 border rounded bg-white shadow-sm">
+              <h2 className="text-lg font-semibold mb-3">Record a Payment</h2>
+              <form onSubmit={handleRecordPayment} className="space-y-3">
+                <p className="text-sm text-gray-600 mb-2">
+                  Record a payment *you* made to someone else in this group.
+                </p>
+                <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-3 sm:space-y-0">
+                  <div className="flex-1">
+                    <label
+                      htmlFor="paidTo"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Who did you pay?
+                    </label>
+                    <select
+                      id="paidTo"
+                      value={paidToUserId}
+                      onChange={(e) => setPaidToUserId(e.target.value)}
+                      className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm bg-white"
+                      disabled={isRecordingPayment || otherMembers.length === 0}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select member...
+                      </option>
+                      {otherMembers.map((member) => (
+                        <option key={member.user.id} value={member.user.id}>
+                          {member.user.name || member.user.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1 sm:flex-none sm:w-32">
+                    <label
+                      htmlFor="paymentAmount"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      id="paymentAmount"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder="0.00"
+                      required
+                      step="0.01"
+                      min="0.01"
+                      className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                      disabled={isRecordingPayment}
+                    />
+                  </div>
+                  <div className="flex-1 sm:flex-none sm:w-40">
+                    <label
+                      htmlFor="paymentDate"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      id="paymentDate"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                      required
+                      className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
+                      disabled={isRecordingPayment}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto p-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50"
+                  disabled={
+                    isRecordingPayment || !paidToUserId || !paymentAmount
+                  }
+                >
+                  {isRecordingPayment ? "Recording..." : "Record Payment"}
+                </button>
+                {recordPaymentError && (
+                  <p className="text-red-500 mt-2 text-sm">
+                    {recordPaymentError}
+                  </p>
+                )}
+              </form>
             </div>
             {/* --- Add Expense Section --- */}
             <div className="p-4 border rounded bg-white shadow-sm">

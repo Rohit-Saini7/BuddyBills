@@ -8,12 +8,12 @@ import { AppService } from "./app.service";
 
 // Feature Modules
 import { AuthModule } from "./auth/auth.module";
+import { ExpensesController } from './expenses.controller';
 import { ExpensesModule } from "./expenses/expenses.module";
 import { GroupsModule } from "./groups/groups.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { UsersController } from './users.controller';
 import { UsersModule } from "./users/users.module";
-import { ExpensesController } from './expenses.controller';
 
 @Module({
   imports: [

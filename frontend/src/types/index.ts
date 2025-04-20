@@ -44,5 +44,24 @@ export interface BalanceResponseDto {
   netBalance: number; // Positive: User is owed; Negative: User owes
 }
 
+// Matches backend CreatePaymentDto for request body
+export interface CreatePaymentDto {
+  amount: number;
+  paid_to_user_id: string; // UUID of the user receiving payment
+  payment_date?: string;   // Optional date string YYYY-MM-DD
+}
+
+export interface PaymentResponseDto {
+  id: string;
+  group_id: string;
+  paid_by_user_id: string;
+  paid_to_user_id: string;
+  amount: number;
+  payment_date: string; // Date string
+  createdAt: string;    // ISO string
+  // paidBy?: UserResponseDto; // Add if backend includes this relation
+  // paidTo?: UserResponseDto; // Add if backend includes this relation
+}
+
 // Optional: Add ExpenseSplitResponseDto if you load splits
 // export interface ExpenseSplitResponseDto { ... }

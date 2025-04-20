@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ExpenseSplit } from 'src/expenses/entities/expense-split.entity';
 import { Expense } from 'src/expenses/entities/expense.entity';
 import { BalanceResponseDto } from 'src/groups/dto/balance-response.dto';
 import { Payment } from 'src/payments/entities/payment.entity';
@@ -30,12 +29,20 @@ export class GroupsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Expense)
     private readonly expenseRepository: Repository<Expense>,
-    @InjectRepository(ExpenseSplit)
-    private readonly expenseSplitRepository: Repository<ExpenseSplit>,
+    // @InjectRepository(ExpenseSplit)
+    // private readonly expenseSplitRepository: Repository<ExpenseSplit>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
 
   ) { }
+
+  async isMember(groupId: string, userId: string): Promise<boolean> {
+    const membership = await this.groupMemberRepository.findOneBy({
+      group_id: groupId,
+      user_id: userId,
+    });
+    return !!membership; // Return true if membership exists, false otherwise
+  }
 
   // --- CREATE Group ---
   async create(createGroupDto: CreateGroupDto, userId: string): Promise<Group> {

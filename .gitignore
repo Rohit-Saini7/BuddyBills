@@ -145,3 +145,6 @@ frontend/.env.local
 backend/dist
 frontend/.next
 frontend/out
+
+frontend/public/sw.js
+frontend/public/workbox-*.js
