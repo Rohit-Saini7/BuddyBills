@@ -1,8 +1,8 @@
 export enum SplitType {
   EQUAL = 'EQUAL',
   EXACT = 'EXACT',
-  // PERCENTAGE = 'PERCENTAGE',
-  // SHARE = 'SHARE',
+  PERCENTAGE = 'PERCENTAGE',
+  SHARE = 'SHARE',
 }
 
 export interface UserResponseDto {
@@ -74,7 +74,10 @@ export interface PaymentResponseDto {
 
 export interface ExpenseSplitInputDto {
   user_id: string;
-  amount: number;
+  amount?: number;
+  percentage?: number;
+  shares?: number;
+
 }
 
 export interface CreateExpenseDto {

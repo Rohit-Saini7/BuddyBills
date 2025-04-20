@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
@@ -10,9 +10,9 @@ import {
   IsString,
   MaxLength,
   ValidateNested,
-} from 'class-validator';
-import { ExpenseSplitInputDto } from 'src/expenses/dto/expense-split-input.dto';
-import { SplitType } from 'src/expenses/dto/expense-split.type';
+} from "class-validator";
+import { ExpenseSplitInputDto } from "src/expenses/dto/expense-split-input.dto";
+import { SplitType } from "src/expenses/dto/expense-split.type";
 
 export class CreateExpenseDto {
   @IsString()
@@ -20,12 +20,18 @@ export class CreateExpenseDto {
   @MaxLength(255)
   description: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Amount must be a number with up to 2 decimal places' })
-  @IsPositive({ message: 'Amount must be positive' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: "Amount must be a number with up to 2 decimal places" }
+  )
+  @IsPositive({ message: "Amount must be positive" })
   @IsNotEmpty()
   amount: number; // Matches the 'number' type used in the entity transformer
 
-  @IsDateString({}, { message: 'Transaction date must be a valid date string (YYYY-MM-DD)' })
+  @IsDateString(
+    {},
+    { message: "Transaction date must be a valid date string (YYYY-MM-DD)" }
+  )
   @IsNotEmpty()
   transaction_date: string; // Matches the 'string' type from the entity
 
@@ -36,10 +42,10 @@ export class CreateExpenseDto {
   @IsEnum(SplitType)
   @IsNotEmpty()
   split_type: SplitType = SplitType.EQUAL;
+
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true }) // Validate each object in the array
-  @Type(() => ExpenseSplitInputDto) // Tell class-transformer to use this type for validation
-  splits?: ExpenseSplitInputDto[]; // Array of { user_id: string, amount: number } for EXACT splits
-
+  @ValidateNested({ each: true })
+  @Type(() => ExpenseSplitInputDto)
+  splits?: ExpenseSplitInputDto[];
 }

@@ -7,7 +7,6 @@ import {
   CreateExpenseDto,
   CreatePaymentDto,
   ExpenseResponseDto,
-  ExpenseSplitInputDto,
   GroupMemberResponseDto,
   GroupResponseDto,
   PaymentResponseDto,
@@ -17,7 +16,7 @@ import EditExpenseModal from "@components/EditExpenseModal";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
 // --- Fetchers ---
@@ -45,7 +44,7 @@ export default function GroupDetailPage() {
   // --- NEW State for Split Logic ---
   const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL); // Default to EQUAL
   // Store exact amounts as strings mapped by userId for easier input handling
-  const [exactSplits, setExactSplits] = useState<{ [userId: string]: string }>(
+  const [splitInputs, setSplitInputs] = useState<{ [userId: string]: string }>(
     {}
   );
 
@@ -105,7 +104,7 @@ export default function GroupDetailPage() {
   } = useSWR(balancesApiUrl, fetchBalances);
 
   // --- Calculated value for exact split validation ---
-  const currentExactSplitTotal = Object.values(exactSplits).reduce(
+  const currentExactSplitTotal = Object.values(splitInputs).reduce(
     (sum, amountStr) => {
       const amount = parseFloat(amountStr);
       return sum + (isNaN(amount) ? 0 : amount);
@@ -117,6 +116,48 @@ export default function GroupDetailPage() {
   const remainingAmount = !isNaN(totalExpenseAmountNumber)
     ? totalExpenseAmountNumber - currentExactSplitTotal
     : 0;
+
+  // --- Helper calculations for validation display ---
+  const percentageTotal = useMemo(() => {
+    if (splitType !== SplitType.PERCENTAGE) return 0;
+    return Object.values(splitInputs).reduce((sum, percentStr) => {
+      const percent = parseFloat(percentStr);
+      return sum + (isNaN(percent) ? 0 : percent);
+    }, 0);
+  }, [splitInputs, splitType]);
+
+  const sharesTotal = useMemo(() => {
+    if (splitType !== SplitType.SHARE) return 0;
+    return Object.values(splitInputs).reduce((sum, shareStr) => {
+      const share = parseFloat(shareStr);
+      return sum + (isNaN(share) ? 0 : share);
+    }, 0);
+  }, [splitInputs, splitType]);
+
+  // Add overall validation status for submit button
+  const isValid = useMemo(() => {
+    const amountNumber = parseFloat(expenseAmount);
+    if (
+      !expenseDescription.trim() ||
+      isNaN(amountNumber) ||
+      amountNumber <= 0 ||
+      !expenseDate
+    )
+      return false;
+    if (splitType === SplitType.EXACT) return Math.abs(remainingAmount) < 0.015;
+    if (splitType === SplitType.PERCENTAGE)
+      return Math.abs(percentageTotal - 100) < 0.01; // Use stricter tolerance for %?
+    if (splitType === SplitType.SHARE) return sharesTotal > 0;
+    return true; // For EQUAL
+  }, [
+    expenseDescription,
+    expenseAmount,
+    expenseDate,
+    splitType,
+    remainingAmount,
+    percentageTotal,
+    sharesTotal,
+  ]);
 
   // --- Handlers ---
 
@@ -153,69 +194,81 @@ export default function GroupDetailPage() {
     const amountNumber = parseFloat(expenseAmount);
     setAddExpenseError(null); // Clear previous errors
 
-    if (
-      !expenseDescription.trim() ||
-      !expenseAmount ||
-      isNaN(amountNumber) ||
-      amountNumber <= 0 ||
-      !expenseDate
-    ) {
-      setAddExpenseError(
-        "Please fill in all fields correctly (Amount must be positive)."
-      );
+    if (!isValid) {
+      // Use the memoized validation check
+      setAddExpenseError("Please check form inputs and split allocations.");
       return;
     }
-    if (!groupId) return;
+    if (!groupId || !members) return;
 
     let expensePayload: Partial<CreateExpenseDto> = {
-      // Use Partial initially
       description: expenseDescription,
       amount: amountNumber,
       transaction_date: expenseDate,
       split_type: splitType,
+      splits: [],
     };
 
-    if (splitType === SplitType.EXACT) {
-      const splitsArray: ExpenseSplitInputDto[] = [];
-      let calculatedSum = 0;
+    const memberIds = members.map((m) => m.user.id);
 
-      // Ensure all members have a value (even if 0) and are valid numbers
-      const memberIds = members?.map((m) => m.user.id) || [];
-      for (const memberId of memberIds) {
-        const amountStr = exactSplits[memberId] || "0"; // Default to '0' if empty
-        const amount = parseFloat(amountStr);
-        if (isNaN(amount) || amount < 0) {
-          setAddExpenseError(
-            `Invalid amount entered for a member. Please enter positive numbers or 0.`
-          );
-          return;
-        }
-        // Only include splits with non-zero amounts in payload? Or include all? Backend likely expects only non-zero contributions typically. Let's send non-zero ones.
-        if (amount > 0.005) {
-          // Add only if amount is positive (handle floating point)
-          splitsArray.push({
-            user_id: memberId,
-            amount: parseFloat(amount.toFixed(2)),
-          });
-          calculatedSum += amount;
-        }
-      }
+    // --- Construct splits array based on type ---
+    if (splitType === SplitType.EQUAL) {
+      // No 'splits' needed in payload, backend handles it
+      delete expensePayload.splits;
+    } else if (splitType === SplitType.EXACT) {
+      expensePayload.splits = Object.entries(splitInputs)
+        .map(([userId, amountStr]) => ({
+          user_id: userId,
+          amount: parseFloat(amountStr || "0"),
+        }))
+        .filter(
+          (split) => split.amount > 0.005 && memberIds.includes(split.user_id)
+        ); // Ensure user is still member
 
-      // Check if sum matches total amount (use tolerance)
-      const tolerance = 0.015; // Allow for rounding diff up to ~1 cent total
-      if (Math.abs(calculatedSum - amountNumber) > tolerance) {
+      if (expensePayload.splits.length === 0) {
         setAddExpenseError(
-          `The exact amounts entered (£${calculatedSum.toFixed(2)}) do not add up to the total expense amount (£${amountNumber.toFixed(2)}). Remaining: £${(amountNumber - calculatedSum).toFixed(2)}`
+          `Exact splits must involve at least one positive amount.`
         );
         return;
       }
-      if (splitsArray.length === 0) {
+    } else if (splitType === SplitType.PERCENTAGE) {
+      expensePayload.splits = Object.entries(splitInputs)
+        .map(([userId, percentStr]) => ({
+          user_id: userId,
+          percentage: parseFloat(percentStr || "0"),
+        }))
+        .filter(
+          (split) =>
+            split.percentage &&
+            split.percentage > 0.0001 &&
+            memberIds.includes(split.user_id)
+        );
+
+      if (expensePayload.splits.length === 0) {
         setAddExpenseError(
-          `Please specify at least one person's share for exact splits.`
+          `Percentage splits must involve at least one positive percentage.`
         );
         return;
       }
-      expensePayload.splits = splitsArray;
+    } else if (splitType === SplitType.SHARE) {
+      expensePayload.splits = Object.entries(splitInputs)
+        .map(([userId, shareStr]) => ({
+          user_id: userId,
+          shares: parseFloat(shareStr || "0"),
+        }))
+        .filter(
+          (split) =>
+            split.shares &&
+            split.shares > 0.0001 &&
+            memberIds.includes(split.user_id)
+        );
+
+      if (expensePayload.splits.length === 0) {
+        setAddExpenseError(
+          `Share splits must involve at least one positive share.`
+        );
+        return;
+      }
     }
 
     setIsAddingExpense(true);
@@ -232,7 +285,7 @@ export default function GroupDetailPage() {
       setExpenseAmount("");
       setExpenseDate(new Date().toISOString().split("T")[0]);
       setSplitType(SplitType.EQUAL); // Reset split type
-      setExactSplits({}); // Reset exact splits
+      setSplitInputs({}); // Reset exact splits
       setAddExpenseError(null);
 
       // Revalidate expenses AND balances
@@ -247,10 +300,11 @@ export default function GroupDetailPage() {
   };
 
   // Exact Split Input Changes Handler
-  const handleExactSplitChange = (userId: string, value: string) => {
-    // Allow empty string, numbers, and one decimal point
-    if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
-      setExactSplits((prev) => ({
+  const handleSplitInputChange = (userId: string, value: string) => {
+    // Allow empty string, numbers, and decimals (adjust regex if needed for shares vs percentage)
+    if (value === "" || /^\d*\.?\d{0,4}$/.test(value)) {
+      // Allow more decimals potentially
+      setSplitInputs((prev) => ({
         ...prev,
         [userId]: value,
       }));
@@ -428,7 +482,7 @@ export default function GroupDetailPage() {
                             {balanceText.replace(
                               `${balance.user.name || balance.user.email} `,
                               ""
-                            )}{" "}
+                            )}
                             {/* Show only status text */}
                           </span>
                         </li>
@@ -529,7 +583,7 @@ export default function GroupDetailPage() {
             {/* --- Add Expense Section --- */}
             <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Add New Expense</h2>
-              <form onSubmit={handleAddExpense} className="space-y-3">
+              <form onSubmit={handleAddExpense} className="space-y-4">
                 <div>
                   <label
                     htmlFor="description"
@@ -595,8 +649,7 @@ export default function GroupDetailPage() {
                     htmlFor="splitType"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    {" "}
-                    Split Method{" "}
+                    Split Method
                   </label>
                   <select
                     id="splitType"
@@ -606,14 +659,15 @@ export default function GroupDetailPage() {
                     disabled={isAddingExpense}
                   >
                     <option value={SplitType.EQUAL}>
-                      {" "}
-                      Split Equally(among all members){" "}
+                      Split Equally(among all members)
                     </option>
                     <option value={SplitType.EXACT}>
-                      {" "}
-                      Split by Exact Amounts{" "}
+                      Split by Exact Amounts
                     </option>
-                    {/* Add PERCENTAGE, SHARE later */}
+                    <option value={SplitType.PERCENTAGE}>
+                      Split by Percentage
+                    </option>
+                    <option value={SplitType.SHARE}> Split by Shares </option>
                   </select>
                 </div>
 
@@ -621,13 +675,11 @@ export default function GroupDetailPage() {
                 {splitType === SplitType.EXACT && (
                   <div className="space-y-2 pt-2 border-t mt-3">
                     <h3 className="text-md font-medium text-gray-800">
-                      {" "}
-                      Enter Exact Amounts Owed:{" "}
+                      Enter Exact Amounts Owed:
                     </h3>
                     {membersLoading && <p>Loading members...</p>}
                     {membersError && (
                       <p className="text-red-500">
-                        {" "}
                         Error loading members for split.
                       </p>
                     )}
@@ -649,9 +701,9 @@ export default function GroupDetailPage() {
                           <input
                             type="number"
                             id={`split-${member.user.id}`}
-                            value={exactSplits[member.user.id] || ""}
+                            value={splitInputs[member.user.id] || ""}
                             onChange={(e) =>
-                              handleExactSplitChange(
+                              handleSplitInputChange(
                                 member.user.id,
                                 e.target.value
                               )
@@ -674,10 +726,121 @@ export default function GroupDetailPage() {
                     </div>
                   </div>
                 )}
+
+                {/* --- Conditional Inputs for PERCENTAGE Split --- */}
+                {splitType === SplitType.PERCENTAGE && (
+                  <div className="space-y-2 pt-3 border-t mt-4">
+                    <h3 className="text-md font-medium text-gray-800">
+                      Enter Percentages:
+                    </h3>
+                    {membersLoading && <p>Loading members...</p>}
+                    {membersError && (
+                      <p className="text-red-500">Error loading members.</p>
+                    )}
+                    {members &&
+                      members.map((member) => (
+                        <div
+                          key={member.user.id}
+                          className="flex items-center justify-between space-x-2"
+                        >
+                          <label
+                            htmlFor={`split-${member.user.id}`}
+                            className="flex-grow text-sm text-gray-600 truncate"
+                            title={member.user.name || member.user.email}
+                          >
+                            {member.user.name || member.user.email}{" "}
+                            {member.user.id === loggedInUser?.id
+                              ? " (You)"
+                              : ""}
+                          </label>
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              id={`split-${member.user.id}`}
+                              value={splitInputs[member.user.id] || ""}
+                              onChange={(e) =>
+                                handleSplitInputChange(
+                                  member.user.id,
+                                  e.target.value
+                                )
+                              }
+                              placeholder="0"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              className="p-1 border rounded w-20 text-right"
+                              disabled={isAddingExpense}
+                            />
+                            <span className="ml-1 text-gray-500 text-sm">
+                              %
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    {/* Display percentage sum validation helper */}
+                    <div
+                      className={`mt-2 text-sm font-medium ${Math.abs(percentageTotal - 100) < 0.01 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      Total Assigned: {percentageTotal.toFixed(2)}% / 100%
+                    </div>
+                  </div>
+                )}
+
+                {/* --- Conditional Inputs for SHARE Split --- */}
+                {splitType === SplitType.SHARE && (
+                  <div className="space-y-2 pt-3 border-t mt-4">
+                    <h3 className="text-md font-medium text-gray-800">
+                      Enter Shares:
+                    </h3>
+                    {membersLoading && <p>Loading members...</p>}
+                    {membersError && (
+                      <p className="text-red-500">Error loading members.</p>
+                    )}
+                    {members &&
+                      members.map((member) => (
+                        <div
+                          key={member.user.id}
+                          className="flex items-center justify-between space-x-2"
+                        >
+                          <label
+                            htmlFor={`split-${member.user.id}`}
+                            className="flex-grow text-sm text-gray-600 truncate"
+                            title={member.user.name || member.user.email}
+                          >
+                            {member.user.name || member.user.email}{" "}
+                            {member.user.id === loggedInUser?.id
+                              ? " (You)"
+                              : ""}
+                          </label>
+                          <input
+                            type="number"
+                            id={`split-${member.user.id}`}
+                            value={splitInputs[member.user.id] || ""}
+                            onChange={(e) =>
+                              handleSplitInputChange(
+                                member.user.id,
+                                e.target.value
+                              )
+                            }
+                            placeholder="0"
+                            step="0.1"
+                            min="0" // Allow fractional shares? Or just integers? Adjust step/validation if needed
+                            className="p-1 border rounded w-20 text-right"
+                            disabled={isAddingExpense}
+                          />
+                        </div>
+                      ))}
+                    {/* Display total shares */}
+                    <div className="mt-2 text-sm font-medium text-gray-700">
+                      Total Shares Assigned: {sharesTotal.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-                  disabled={isAddingExpense}
+                  disabled={isAddingExpense || !isValid}
                 >
                   {isAddingExpense ? "Adding..." : "Add Expense"}
                 </button>
@@ -725,13 +888,13 @@ export default function GroupDetailPage() {
                         >
                           <p className="font-medium">{expense.description}</p>
                           <p className="text-sm text-gray-500">
-                            Paid by{" "}
+                            Paid by&nbsp;
                             {expense.paidBy?.id === loggedInUser?.id
                               ? "You"
                               : expense.paidBy?.name ||
                                 expense.paidBy?.email ||
-                                "Unknown"}{" "}
-                            on{" "}
+                                "Unknown"}
+                            &nbsp;on&nbsp;
                             {new Date(
                               expense.transaction_date + "T00:00:00"
                             ).toLocaleDateString()}

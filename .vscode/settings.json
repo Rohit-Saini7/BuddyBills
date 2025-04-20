@@ -22,16 +22,15 @@
     "strings": true
   },
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true, // Auto-fix ESLint issues on save
-    "source.organizeImports": true // Auto-organize imports on save
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
   },
   "editor.cursorBlinking": "phase", // Cursor animation type
   "editor.cursorSmoothCaretAnimation": "on", // Smooth cursor animation
   "editor.rulers": [], // Vertical lines for code width limits
   "editor.folding": true, // Enable code folding
   "editor.matchBrackets": "always", // Highlight matching brackets
-  "editor.renderWhitespace": "selection", // Show whitespace characters
-  "editor.renderIndentGuides": true, // Show indentation guides
+  "editor.renderWhitespace": "selection", // Show indentation guides
   "editor.autoClosingBrackets": "always", // Auto-close brackets
   "editor.bracketPairColorization.enabled": true,
   "editor.suggestSelection": "first",
@@ -218,5 +217,6 @@
       "bold": false,
       "italic": false
     }
-  ]
+  ],
+  "editor.guides.indentation": true
 }

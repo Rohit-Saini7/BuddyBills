@@ -3,7 +3,6 @@
 import { apiClient } from "@/lib/apiClient";
 import {
   ExpenseResponseDto,
-  ExpenseSplitInputDto,
   GroupMemberResponseDto,
   SplitType,
   UpdateExpenseDto,
@@ -34,7 +33,7 @@ export default function EditExpenseModal({
   const [splitType, setSplitType] = useState<SplitType>(
     /* expense.split_type || */ SplitType.EQUAL
   ); // Default or load from expense if backend returns it
-  const [exactSplits, setExactSplits] = useState<{ [userId: string]: string }>(
+  const [splitInputs, setExactSplits] = useState<{ [userId: string]: string }>(
     {}
   ); // Initialize empty or prefill if possible
 
@@ -60,11 +59,11 @@ export default function EditExpenseModal({
 
   // --- Calculated values for EXACT split validation ---
   const currentExactSplitTotal = useMemo(() => {
-    return Object.values(exactSplits).reduce((sum, amountStr) => {
+    return Object.values(splitInputs).reduce((sum, amountStr) => {
       const amount = parseFloat(amountStr);
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
-  }, [exactSplits]);
+  }, [splitInputs]);
   const totalExpenseAmountNumber = parseFloat(amountStr);
   const remainingAmount = useMemo(
     () =>
@@ -75,11 +74,53 @@ export default function EditExpenseModal({
   );
 
   // --- Handler for Exact Split Input Changes ---
-  const handleExactSplitChange = (userId: string, value: string) => {
+  const handleSplitInputChange = (userId: string, value: string) => {
     if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
       setExactSplits((prev) => ({ ...prev, [userId]: value }));
     }
   };
+
+  // --- Helper calculations for validation display ---
+  const percentageTotal = useMemo(() => {
+    if (splitType !== SplitType.PERCENTAGE) return 0;
+    return Object.values(splitInputs).reduce((sum, percentStr) => {
+      const percent = parseFloat(percentStr);
+      return sum + (isNaN(percent) ? 0 : percent);
+    }, 0);
+  }, [splitInputs, splitType]);
+
+  const sharesTotal = useMemo(() => {
+    if (splitType !== SplitType.SHARE) return 0;
+    return Object.values(splitInputs).reduce((sum, shareStr) => {
+      const share = parseFloat(shareStr);
+      return sum + (isNaN(share) ? 0 : share);
+    }, 0);
+  }, [splitInputs, splitType]);
+
+  // Add overall validation status for submit button
+  const isValid = useMemo(() => {
+    const amountNumber = parseFloat(amountStr);
+    if (
+      !description.trim() ||
+      isNaN(amountNumber) ||
+      amountNumber <= 0 ||
+      !transactionDate
+    )
+      return false;
+    if (splitType === SplitType.EXACT) return Math.abs(remainingAmount) < 0.015;
+    if (splitType === SplitType.PERCENTAGE)
+      return Math.abs(percentageTotal - 100) < 0.01; // Use stricter tolerance for %?
+    if (splitType === SplitType.SHARE) return sharesTotal > 0;
+    return true; // For EQUAL
+  }, [
+    description,
+    amountStr,
+    transactionDate,
+    splitType,
+    remainingAmount,
+    percentageTotal,
+    sharesTotal,
+  ]);
 
   // --- Handler for Form Submission ---
   const handleUpdateExpense = async (
@@ -89,15 +130,9 @@ export default function EditExpenseModal({
     setError(null);
     const amountNumber = parseFloat(amountStr);
 
-    // Basic validation
-    if (
-      !description.trim() ||
-      !amountStr ||
-      isNaN(amountNumber) ||
-      amountNumber <= 0 ||
-      !transactionDate
-    ) {
-      setError("Please fill in Description, a positive Amount, and Date.");
+    if (!isValid) {
+      // Use the memoized validation check
+      setError("Please check form inputs and split allocations.");
       return;
     }
 
@@ -106,50 +141,69 @@ export default function EditExpenseModal({
       // Always include fields that might need validation together
       amount: amountNumber,
       split_type: splitType,
+      splits: [],
     };
     if (description !== expense.description) payload.description = description;
     if (transactionDate !== expense.transaction_date)
       payload.transaction_date = transactionDate;
 
-    // --- Validation and Payload construction for EXACT ---
-    if (splitType === SplitType.EXACT) {
-      const splitsArray: ExpenseSplitInputDto[] = [];
-      let calculatedSum = 0;
-      const memberIds = members.map((m) => m.user.id);
+    const memberIds = members.map((m) => m.user.id);
 
-      for (const memberId of memberIds) {
-        const amountStr = exactSplits[memberId] || "0";
-        const amount = parseFloat(amountStr);
-        if (isNaN(amount) || amount < 0) {
-          setError(`Invalid amount for a member.`);
-          return;
-        }
-        if (amount > 0.005) {
-          splitsArray.push({
-            user_id: memberId,
-            amount: parseFloat(amount.toFixed(2)),
-          });
-          calculatedSum += amount;
-        }
+    // --- Validation and Payload construction for EXACT ---
+    if (splitType === SplitType.EQUAL) {
+      // No 'splits' needed in payload, backend handles it
+      delete payload.splits;
+    } else if (splitType === SplitType.EXACT) {
+      payload.splits = Object.entries(splitInputs)
+        .map(([userId, amountStr]) => ({
+          user_id: userId,
+          amount: parseFloat(amountStr || "0"),
+        }))
+        .filter(
+          (split) => split.amount > 0.005 && memberIds.includes(split.user_id)
+        ); // Ensure user is still member
+
+      if (payload.splits.length === 0) {
+        setError(`Exact splits must involve at least one positive amount.`);
+        return;
       }
-      const tolerance = 0.015;
-      if (Math.abs(calculatedSum - amountNumber) > tolerance) {
+    } else if (splitType === SplitType.PERCENTAGE) {
+      payload.splits = Object.entries(splitInputs)
+        .map(([userId, percentStr]) => ({
+          user_id: userId,
+          percentage: parseFloat(percentStr || "0"),
+        }))
+        .filter(
+          (split) =>
+            split.percentage &&
+            split.percentage > 0.0001 &&
+            memberIds.includes(split.user_id)
+        );
+
+      if (payload.splits.length === 0) {
         setError(
-          `Exact amounts (£${calculatedSum.toFixed(2)}) don't sum to total (£${amountNumber.toFixed(2)}). Remaining: £${(amountNumber - calculatedSum).toFixed(2)}`
+          `Percentage splits must involve at least one positive percentage.`
         );
         return;
       }
-      if (splitsArray.length === 0 && amountNumber > 0) {
-        // Ensure non-zero expense has splits
-        setError(
-          `Please specify at least one person's share for exact splits.`
+    } else if (splitType === SplitType.SHARE) {
+      payload.splits = Object.entries(splitInputs)
+        .map(([userId, shareStr]) => ({
+          user_id: userId,
+          shares: parseFloat(shareStr || "0"),
+        }))
+        .filter(
+          (split) =>
+            split.shares &&
+            split.shares > 0.0001 &&
+            memberIds.includes(split.user_id)
         );
+
+      if (payload.splits.length === 0) {
+        setError(`Share splits must involve at least one positive share.`);
         return;
       }
-      payload.splits = splitsArray; // Add splits array to payload
     }
-    // If type is EQUAL, don't send splits array (backend recalculates)
-    // --- End EXACT split validation ---
 
     setIsLoading(true);
     try {
@@ -244,6 +298,8 @@ export default function EditExpenseModal({
             >
               <option value={SplitType.EQUAL}>Split Equally</option>
               <option value={SplitType.EXACT}>Split by Exact Amounts</option>
+              <option value={SplitType.PERCENTAGE}>Split by Percentage</option>
+              <option value={SplitType.SHARE}> Split by Shares </option>
             </select>
           </div>
           {/* Conditional Exact Splits */}
@@ -269,9 +325,9 @@ export default function EditExpenseModal({
                   <input
                     type="number"
                     id={`edit-split-${member.user.id}`}
-                    value={exactSplits[member.user.id] || ""}
+                    value={splitInputs[member.user.id] || ""}
                     onChange={(e) =>
-                      handleExactSplitChange(member.user.id, e.target.value)
+                      handleSplitInputChange(member.user.id, e.target.value)
                     }
                     placeholder="0.00"
                     step="0.01"
@@ -288,6 +344,97 @@ export default function EditExpenseModal({
                 Total Assigned: ₹{currentExactSplitTotal.toFixed(2)} / ₹
                 {(totalExpenseAmountNumber || 0).toFixed(2)}
                 (Remaining: ₹{remainingAmount.toFixed(2)})
+              </div>
+            </div>
+          )}
+
+          {/* --- Conditional Inputs for PERCENTAGE Split --- */}
+          {splitType === SplitType.PERCENTAGE && (
+            <div className="space-y-2 pt-3 border-t mt-4">
+              <h3 className="text-md font-medium text-gray-800">
+                Enter Percentages:
+              </h3>
+              {members &&
+                members.map((member) => (
+                  <div
+                    key={member.user.id}
+                    className="flex items-center justify-between space-x-2"
+                  >
+                    <label
+                      htmlFor={`split-${member.user.id}`}
+                      className="flex-grow text-sm text-gray-600 truncate"
+                      title={member.user.name || member.user.email}
+                    >
+                      {member.user.name || member.user.email}{" "}
+                      {member.user.id === loggedInUserId ? " (You)" : ""}
+                    </label>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        id={`split-${member.user.id}`}
+                        value={splitInputs[member.user.id] || ""}
+                        onChange={(e) =>
+                          handleSplitInputChange(member.user.id, e.target.value)
+                        }
+                        placeholder="0"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className="p-1 border rounded w-20 text-right"
+                        disabled={isLoading}
+                      />
+                      <span className="ml-1 text-gray-500 text-sm">%</span>
+                    </div>
+                  </div>
+                ))}
+              {/* Display percentage sum validation helper */}
+              <div
+                className={`mt-2 text-sm font-medium ${Math.abs(percentageTotal - 100) < 0.01 ? "text-green-600" : "text-red-600"}`}
+              >
+                Total Assigned: {percentageTotal.toFixed(2)}% / 100%
+              </div>
+            </div>
+          )}
+
+          {/* --- Conditional Inputs for SHARE Split --- */}
+          {splitType === SplitType.SHARE && (
+            <div className="space-y-2 pt-3 border-t mt-4">
+              <h3 className="text-md font-medium text-gray-800">
+                Enter Shares:
+              </h3>
+
+              {members &&
+                members.map((member) => (
+                  <div
+                    key={member.user.id}
+                    className="flex items-center justify-between space-x-2"
+                  >
+                    <label
+                      htmlFor={`split-${member.user.id}`}
+                      className="flex-grow text-sm text-gray-600 truncate"
+                      title={member.user.name || member.user.email}
+                    >
+                      {member.user.name || member.user.email}{" "}
+                      {member.user.id === loggedInUserId ? " (You)" : ""}
+                    </label>
+                    <input
+                      type="number"
+                      id={`split-${member.user.id}`}
+                      value={splitInputs[member.user.id] || ""}
+                      onChange={(e) =>
+                        handleSplitInputChange(member.user.id, e.target.value)
+                      }
+                      placeholder="0"
+                      step="0.1"
+                      min="0" // Allow fractional shares? Or just integers? Adjust step/validation if needed
+                      className="p-1 border rounded w-20 text-right"
+                      disabled={isLoading}
+                    />
+                  </div>
+                ))}
+              {/* Display total shares */}
+              <div className="mt-2 text-sm font-medium text-gray-700">
+                Total Shares Assigned: {sharesTotal.toFixed(2)}
               </div>
             </div>
           )}
