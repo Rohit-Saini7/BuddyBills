@@ -13,6 +13,7 @@ import {
   PaymentResponseDto,
   SplitType,
 } from "@/types";
+import EditExpenseModal from "@components/EditExpenseModal";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -70,6 +71,9 @@ export default function GroupDetailPage() {
   const [deleteExpenseError, setDeleteExpenseError] = useState<string | null>(
     null
   );
+
+  const [editingExpense, setEditingExpense] =
+    useState<ExpenseResponseDto | null>(null); // Store the expense being edited
 
   // --- SWR Hooks ---
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
@@ -706,11 +710,19 @@ export default function GroupDetailPage() {
                     expenses.map((expense) => (
                       <li
                         key={expense.id}
-                        className="p-3 border-b flex justify-between items-center group hover:bg-gray-50"
+                        className={`p-3 border-b flex justify-between items-center group hover:bg-gray-50 ${
+                          expense.deletedAt ? "opacity-50" : ""
+                        }`}
                       >
                         {/* Added group class for hover effect */}
                         {/* Expense Details */}
-                        <div>
+                        <div
+                          className={`${
+                            expense.deletedAt
+                              ? "line-through text-gray-400"
+                              : ""
+                          }`}
+                        >
                           <p className="font-medium">{expense.description}</p>
                           <p className="text-sm text-gray-500">
                             Paid by{" "}
@@ -727,40 +739,71 @@ export default function GroupDetailPage() {
                         </div>
                         {/* Amount and Delete Button */}
                         <div className="flex items-center space-x-3">
-                          <span className="font-semibold text-lg">
+                          <span
+                            className={`font-semibold text-lg ${
+                              expense.deletedAt
+                                ? "line-through text-gray-400"
+                                : ""
+                            }`}
+                          >
                             ₹{expense.amount.toFixed(2)}
                           </span>
-                          {/* Delete Button */}
-                          <button
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            disabled={deletingExpenseId === expense.id} // Disable only the button being clicked
-                            className={`p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 ${deletingExpenseId === expense.id ? "animate-pulse" : ""}`} // Basic loading indicator via pulse
-                            title="Delete Expense"
-                            aria-label={`Delete expense: ${expense.description}`}
-                          >
-                            {deletingExpenseId === expense.id ? (
-                              // Simple text loading indicator
-                              <span className="text-xs">Deleting...</span>
-                            ) : (
-                              // Trash icon (requires an icon library like react-icons or heroicons)
-                              // Replace with your preferred icon component or text
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
+
+                          {/* --- Edit Button --- */}
+                          {!expense.deletedAt &&
+                            expense.paidBy?.id === loggedInUser?.id && ( // Condition: Not deleted AND current user is payer
+                              <button
+                                onClick={() => setEditingExpense(expense)} // Set the expense to edit on click
+                                className="p-1 text-blue-500 rounded hover:bg-blue-100"
+                                title="Edit Expense"
+                                aria-label={`Edit expense: ${expense.description}`}
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
                             )}
-                          </button>
-                          {/* TODO: Add Edit Button Later */}
+                          {/* Delete Button */}
+                          {!expense.deletedAt &&
+                            expense.paidBy?.id === loggedInUser?.id && (
+                              <button
+                                onClick={() => handleDeleteExpense(expense.id)}
+                                disabled={deletingExpenseId === expense.id} // Disable only the button being clicked
+                                className={`p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 ${deletingExpenseId === expense.id ? "animate-pulse" : ""}`} // Basic loading indicator via pulse
+                                title="Delete Expense"
+                                aria-label={`Delete expense: ${expense.description}`}
+                              >
+                                {deletingExpenseId === expense.id ? (
+                                  <span className="text-xs">Deleting...</span>
+                                ) : (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
                         </div>
                       </li>
                     ))
@@ -809,6 +852,21 @@ export default function GroupDetailPage() {
               </form>
             </div>
           </div>
+        )}
+        {/* --- Conditionally Render Edit Modal --- */}
+        {editingExpense && (
+          <EditExpenseModal
+            expense={editingExpense}
+            members={members || []} // Pass members list
+            loggedInUserId={loggedInUser?.id || ""} // Pass current user ID
+            onClose={() => setEditingExpense(null)} // Function to close modal
+            onSave={() => {
+              // Function to run after successful save
+              mutate(expensesApiUrl); // Revalidate expenses
+              mutate(balancesApiUrl); // Revalidate balances
+              setEditingExpense(null); // Close modal
+            }}
+          />
         )}
       </div>
     </ProtectedLayout>

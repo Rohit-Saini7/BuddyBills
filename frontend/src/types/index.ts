@@ -43,6 +43,8 @@ export interface ExpenseResponseDto {
   transaction_date: string; // Comes as string (date part)
   createdAt: string; // Comes as ISO string
   paidBy: UserResponseDto; // Nested payer details
+  deletedAt: string | null; // Soft delete field
+  split_type?: SplitType;
   // splits?: ExpenseSplitResponseDto[]; // Add later if needed
 }
 
@@ -81,6 +83,14 @@ export interface CreateExpenseDto {
   transaction_date: string; // YYYY-MM-DD format
   split_type: SplitType; // Now required
   splits?: ExpenseSplitInputDto[]; // Optional array for EXACT/etc. splits
+}
+
+export interface UpdateExpenseDto {
+  description?: string;
+  amount?: number;
+  transaction_date?: string; // YYYY-MM-DD format
+  split_type?: SplitType;
+  splits?: ExpenseSplitInputDto[]; // Array for EXACT splits
 }
 
 // Optional: Add ExpenseSplitResponseDto if you load splits

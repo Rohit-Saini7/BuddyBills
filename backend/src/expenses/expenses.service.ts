@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { UpdateExpenseDto } from 'src/expenses/dto/update-expense.dto';
 import { DataSource, Repository } from "typeorm"; // Import DataSource
 import { GroupsService } from "../groups/groups.service"; // Import GroupsService
 import { CreateExpenseDto } from "./dto/create-expense.dto";
@@ -271,5 +272,156 @@ export class ExpensesService {
     // Balance calculation logic needs to ignore splits related to soft-deleted expenses.
   }
 
-  // --- Add Update methods later ---
+  // --- UPDATE Expense ---
+  async updateExpense(
+    expenseId: string,
+    requestingUserId: string,
+    updateExpenseDto: UpdateExpenseDto,
+  ): Promise<Expense> {
+
+    // Start transaction early to fetch data consistently
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let updatedExpense: Expense;
+
+    try {
+      // 1. Fetch Existing Expense within transaction using the manager
+      const expense = await queryRunner.manager.findOne(Expense, {
+        where: { id: expenseId },
+        relations: ['group'], // Needed for group ID -> members lookup later
+        // Do NOT use withDeleted: true here - cannot edit deleted expenses
+      });
+
+      if (!expense) {
+        throw new NotFoundException(`Expense with ID "${expenseId}" not found.`);
+      }
+      // Should not happen if findOne succeeded, but check just in case
+      if (expense.deletedAt) {
+        throw new BadRequestException(`Cannot edit a deleted expense.`);
+      }
+
+      // 2. Check Authorization: Only payer can edit
+      if (expense.paid_by_user_id !== requestingUserId) {
+        throw new ForbiddenException('Only the user who paid for the expense can edit it.');
+      }
+
+      // 3. Determine if splits need recalculation
+      const newTotalAmount = updateExpenseDto.amount ?? expense.amount; // Use new amount if provided, else old
+      const newSplitType = updateExpenseDto.split_type ?? expense.split_type; // Use new type if provided, else old
+      const newSplitsInput = updateExpenseDto.splits; // Use new splits if provided
+
+      const needsSplitRecalculation =
+        updateExpenseDto.amount !== undefined ||
+        updateExpenseDto.split_type !== undefined ||
+        (newSplitType !== SplitType.EQUAL && updateExpenseDto.splits !== undefined); // Recalculate if type changes or if new splits provided for non-equal types
+
+      let validatedSplitsData: { user_id: string; amount: number }[] = [];
+
+      // 4. Validate and Prepare New Splits (if needed)
+      if (needsSplitRecalculation) {
+        // Fetch current members for validation and potential equal split
+        const members = await this.groupsService.findGroupMembers(expense.group_id, requestingUserId); // Need members for validation/splitting
+        const memberIds = new Set(members.map(m => m.user_id));
+
+        if (newSplitType === SplitType.EQUAL) {
+          // Recalculate EQUAL split based on NEW total amount and current members
+          const numberOfMembers = members.length;
+          if (numberOfMembers === 0) throw new BadRequestException('Group has no members for equal split.');
+
+          const baseSplitAmount = Math.floor((newTotalAmount / numberOfMembers) * 100) / 100;
+          const totalBaseAmount = baseSplitAmount * numberOfMembers;
+          const remainder = Math.round((newTotalAmount - totalBaseAmount) * 100);
+
+          validatedSplitsData = members.map((member, index) => ({
+            user_id: member.user_id,
+            amount: parseFloat((baseSplitAmount + (index < remainder ? 0.01 : 0)).toFixed(2)),
+          }));
+
+        } else if (newSplitType === SplitType.EXACT) {
+          // Validate the provided EXACT splits against the NEW total amount
+          if (!newSplitsInput || newSplitsInput.length === 0) {
+            throw new BadRequestException(`Splits array is required when updating to split type ${SplitType.EXACT}.`);
+          }
+          let sumOfSplitAmounts = 0;
+          const involvedUserIds = new Set<string>();
+
+          for (const split of newSplitsInput) {
+            if (!memberIds.has(split.user_id)) throw new BadRequestException(`User ${split.user_id} in splits is not a member.`);
+            if (involvedUserIds.has(split.user_id)) throw new BadRequestException(`Duplicate user ${split.user_id} in splits.`);
+            involvedUserIds.add(split.user_id);
+            if (isNaN(split.amount) || split.amount < 0) throw new BadRequestException(`Invalid amount for user ${split.user_id}.`);
+            sumOfSplitAmounts += split.amount;
+          }
+          const tolerance = 0.015;
+          if (Math.abs(sumOfSplitAmounts - newTotalAmount) > tolerance) {
+            throw new BadRequestException(`Sum of exact splits (${sumOfSplitAmounts.toFixed(2)}) does not match new expense amount (${newTotalAmount.toFixed(2)}).`);
+          }
+          // Filter out zero amounts if desired, or keep them
+          validatedSplitsData = newSplitsInput
+            .filter(s => s.amount > 0.005) // Only save non-zero splits
+            .map(s => ({ user_id: s.user_id, amount: parseFloat(s.amount.toFixed(2)) }));
+          if (validatedSplitsData.length === 0) throw new BadRequestException('Exact splits must involve at least one positive amount.');
+
+        } else {
+          throw new BadRequestException(`Split type "${newSplitType}" is not yet supported for editing.`);
+        }
+      }
+
+      // 5. Perform Updates within Transaction
+
+      // Update basic expense fields (description, amount, date, split_type)
+      // Create a clean object with only the fields present in the DTO
+      const expenseUpdateData: Partial<Expense> = {};
+      if (updateExpenseDto.description !== undefined) expenseUpdateData.description = updateExpenseDto.description;
+      if (updateExpenseDto.amount !== undefined) expenseUpdateData.amount = updateExpenseDto.amount;
+      if (updateExpenseDto.transaction_date !== undefined) expenseUpdateData.transaction_date = updateExpenseDto.transaction_date;
+      if (updateExpenseDto.split_type !== undefined) expenseUpdateData.split_type = updateExpenseDto.split_type;
+
+      // Apply the basic updates
+      await queryRunner.manager.update(Expense, expenseId, expenseUpdateData);
+
+
+      // Update splits if necessary
+      if (needsSplitRecalculation) {
+        // Delete old splits
+        await queryRunner.manager.delete(ExpenseSplit, { expense_id: expenseId });
+
+        // Create new splits
+        const newSplitEntities = validatedSplitsData.map(splitData =>
+          queryRunner.manager.create(ExpenseSplit, {
+            expense_id: expenseId, // Use original expense ID
+            owed_by_user_id: splitData.user_id,
+            amount: splitData.amount,
+          })
+        );
+        await queryRunner.manager.save(ExpenseSplit, newSplitEntities);
+      }
+
+      // 6. Commit Transaction
+      await queryRunner.commitTransaction();
+
+      // 7. Fetch the updated expense *after* transaction commits
+      updatedExpense = await this.expenseRepository.findOneOrFail({ // Use findOneOrFail
+        where: { id: expenseId },
+        relations: ['paidBy'], // Include relations needed for response DTO
+      });
+
+    } catch (err) {
+      // 8. Rollback on any error
+      await queryRunner.rollbackTransaction();
+      console.error("Transaction failed in updateExpense:", err);
+      // Re-throw specific exceptions if possible, otherwise generic server error
+      if (err instanceof NotFoundException || err instanceof ForbiddenException || err instanceof BadRequestException) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Failed to update expense due to a transaction error.');
+    } finally {
+      // 9. Release query runner
+      await queryRunner.release();
+    }
+
+    return updatedExpense; // Return the fully updated expense
+  }
 }

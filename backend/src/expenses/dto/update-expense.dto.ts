@@ -1,17 +1,23 @@
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsPositive,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import { ExpenseSplitInputDto } from 'src/expenses/dto/expense-split-input.dto';
+import { SplitType } from 'src/expenses/dto/expense-split.type';
 
 export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
-  @IsNotEmpty() // Keep NotEmpty even if optional, so if provided, it's not empty
+  @IsNotEmpty()
   @MaxLength(255)
   description?: string;
 
@@ -26,5 +32,18 @@ export class UpdateExpenseDto {
   @IsNotEmpty()
   transaction_date?: string;
 
-  // Cannot typically change group_id or paid_by_user_id easily via update
+  // Allow changing the split method
+  @IsOptional()
+  @IsEnum(SplitType)
+  @IsNotEmpty()
+  split_type?: SplitType;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExpenseSplitInputDto)
+  splits?: ExpenseSplitInputDto[];
+
+  // Note: Changing the 'group_id' is typically not allowed.
+  // Note: Changing the 'paid_by_user_id' is usually complex and not allowed via simple edit.
 }
