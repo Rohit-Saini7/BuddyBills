@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -109,20 +110,39 @@ export class GroupsService {
 
   // --- UPDATE Group ---
   async update(
-    id: string,
+    groupId: string, // Renamed parameter for clarity
     updateGroupDto: UpdateGroupDto,
-    userId: string,
+    requestingUserId: string,
   ): Promise<Group> {
-    const group = await this.findOneById(id, userId); // Use findOneById to ensure user has access first
+    // 1. Find group & check basic membership access first
+    const group = await this.findOneById(groupId, requestingUserId);
 
-    // Basic check: Only allow the creator to update the group name (adjust logic as needed)
-    if (group.created_by_user_id !== userId) {
+    // 2. Authorization: Check if the requester is the original creator
+    if (group.created_by_user_id !== requestingUserId) {
       throw new ForbiddenException('Only the group creator can rename the group.');
     }
 
-    // Merge existing group with updated data and save
-    this.groupRepository.merge(group, updateGroupDto);
-    return this.groupRepository.save(group);
+    // 3. Apply updates from DTO (only 'name' in this case)
+    // Using merge + save ensures @UpdateDateColumn works automatically
+    if (updateGroupDto.name !== undefined) {
+      // Optional: Add check here if name is empty string after trim if needed
+      if (!updateGroupDto.name.trim()) {
+        throw new BadRequestException('Group name cannot be empty.');
+      }
+      group.name = updateGroupDto.name.trim();
+    } else {
+      // If no relevant fields are provided in the DTO for update
+      return group; // Return the unchanged group
+    }
+
+
+    // 4. Save the updated group entity
+    try {
+      return await this.groupRepository.save(group);
+    } catch (error) {
+      console.error("Error saving updated group:", error);
+      throw new InternalServerErrorException('Could not update group name.');
+    }
   }
 
   // --- DELETE Group ---

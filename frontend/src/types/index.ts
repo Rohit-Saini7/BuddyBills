@@ -20,6 +20,10 @@ export interface GroupMemberResponseDto {
   user: UserResponseDto;
 }
 
+export interface UpdateGroupDto {
+  name: string;
+}
+
 // GroupResponseDto remains the same
 export interface GroupResponseDto {
   id: string;

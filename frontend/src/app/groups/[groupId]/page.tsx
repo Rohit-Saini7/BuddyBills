@@ -11,6 +11,7 @@ import {
   GroupResponseDto,
   PaymentResponseDto,
   SplitType,
+  UpdateGroupDto,
 } from "@/types";
 import EditExpenseModal from "@components/EditExpenseModal";
 import ProtectedLayout from "@components/ProtectedLayout";
@@ -73,6 +74,12 @@ export default function GroupDetailPage() {
 
   const [editingExpense, setEditingExpense] =
     useState<ExpenseResponseDto | null>(null); // Store the expense being edited
+
+  // --- NEW State for Editing Group Name ---
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedGroupName, setEditedGroupName] = useState("");
+  const [editNameError, setEditNameError] = useState<string | null>(null);
+  const [isSavingName, setIsSavingName] = useState(false);
 
   // --- SWR Hooks ---
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
@@ -391,7 +398,54 @@ export default function GroupDetailPage() {
       }
     },
     [groupId, mutate, expensesApiUrl, balancesApiUrl]
-  ); // Add dependencies
+  );
+
+  // Editing Group Name Handlers
+  const handleEditNameClick = () => {
+    if (group) {
+      setEditedGroupName(group.name);
+      setIsEditingName(true);
+      setEditNameError(null);
+    }
+  };
+
+  const handleCancelEditName = () => {
+    setIsEditingName(false);
+    setEditNameError(null);
+  };
+
+  const handleSaveGroupName = async () => {
+    if (!editedGroupName.trim()) {
+      setEditNameError("Group name cannot be empty.");
+      return;
+    }
+    if (!group || editedGroupName.trim() === group.name) {
+      setIsEditingName(false);
+      setEditNameError(null);
+      return;
+    }
+
+    setIsSavingName(true);
+    setEditNameError(null);
+
+    try {
+      const updateData: UpdateGroupDto = { name: editedGroupName.trim() };
+      await apiClient.patch<GroupResponseDto>(
+        `/groups/${group.id}`,
+        updateData
+      );
+
+      // Mutate the group data to reflect the change immediately
+      mutate(groupApiUrl); // Re-fetches /api/groups/:groupId
+
+      setIsEditingName(false); // Exit editing mode
+    } catch (error: any) {
+      console.error("Failed to update group name:", error);
+      setEditNameError(error.message || "Could not update group name.");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   const isLoading = groupLoading || isAuthLoading;
 
@@ -416,7 +470,68 @@ export default function GroupDetailPage() {
 
         {!isLoading && !groupError && group && (
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold mb-4">{group.name}</h1>
+            <div className="flex items-center space-x-3 mb-4">
+              {isEditingName ? (
+                // --- Editing State ---
+                <>
+                  <input
+                    type="text"
+                    value={editedGroupName}
+                    onChange={(e) => setEditedGroupName(e.target.value)}
+                    className="flex-grow text-2xl font-bold p-1 border border-blue-300 rounded"
+                    maxLength={100}
+                    disabled={isSavingName}
+                    autoFocus // Focus input when it appears
+                  />
+                  <button
+                    onClick={handleSaveGroupName}
+                    disabled={
+                      isSavingName ||
+                      !editedGroupName.trim() ||
+                      editedGroupName.trim() === group.name
+                    }
+                    className="p-1 px-3 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
+                  >
+                    {isSavingName ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={handleCancelEditName}
+                    disabled={isSavingName}
+                    className="p-1 px-3 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold"> {group.name} </h1>
+                  {loggedInUser?.id === group.created_by_user_id && (
+                    <button
+                      onClick={handleEditNameClick}
+                      className="p-1 text-blue-500 rounded hover:bg-blue-100"
+                      title="Edit Group Name"
+                    >
+                      {/* Edit Icon */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* --- Balances Section --- */}
             <div className="p-4 border rounded bg-white shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Group Balances</h2>
