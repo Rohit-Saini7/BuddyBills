@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/apiClient";
 import { GroupResponseDto } from "@/types";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
-import React, { useState } from "react"; // Import useState
+import React, { useCallback, useState } from "react"; // Import useState
 import useSWR, { useSWRConfig } from "swr"; // Import useSWRConfig
 
 // Fetcher function remains the same
@@ -20,14 +20,24 @@ export default function DashboardPage() {
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupError, setCreateGroupError] = useState<string | null>(null);
 
-  // SWR hook for fetching groups
+  const [restoringGroupId, setRestoringGroupId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  const activeGroupsApiUrl = "/groups";
+  const deletedGroupsApiUrl = "/groups/deleted/mine";
   const {
     data: groups,
     error: fetchGroupsError,
     isLoading: isGroupsLoading,
-  } = useSWR(!isAuthLoading ? "/groups" : null, fetcher);
+  } = useSWR(!isAuthLoading ? activeGroupsApiUrl : null, fetcher);
 
-  const isLoading = isAuthLoading || isGroupsLoading;
+  const {
+    data: deletedGroups,
+    error: fetchDeletedError,
+    isLoading: deletedLoading,
+  } = useSWR(!isAuthLoading ? deletedGroupsApiUrl : null, fetcher);
+
+  const isLoading = isAuthLoading || isGroupsLoading || deletedLoading;
 
   // --- Handler for creating a new group ---
   const handleCreateGroup = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -63,6 +73,31 @@ export default function DashboardPage() {
     }
   };
 
+  // --- Restore Group Handler ---
+  const handleRestoreGroup = useCallback(
+    async (groupId: string) => {
+      setRestoringGroupId(groupId);
+      setRestoreError(null);
+      try {
+        // Call the PATCH endpoint for restoring
+        await apiClient.patch(`/groups/${groupId}/restore`, {});
+
+        // Mutate BOTH lists: remove from deleted, add back to active
+        mutate(activeGroupsApiUrl);
+        mutate(deletedGroupsApiUrl);
+
+        // Optional: Success feedback
+        // alert('Group restored!');
+      } catch (error: any) {
+        console.error("Failed to restore group:", error);
+        setRestoreError(`Failed to restore group: ${error.message}`);
+      } finally {
+        setRestoringGroupId(null);
+      }
+    },
+    [mutate]
+  );
+
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4">
@@ -96,10 +131,9 @@ export default function DashboardPage() {
             <p className="text-red-500 mt-2">{createGroupError}</p>
           )}
         </form>
-        {/* --- End Create Group Form --- */}
 
         {/* --- Display Groups List --- */}
-        <h2 className="text-xl font-semibold mb-3">Existing Groups</h2>
+        <h2 className="text-xl font-semibold mb-3">My Groups</h2>
         {isLoading && <p>Loading groups...</p>}
 
         {fetchGroupsError && (
@@ -109,7 +143,7 @@ export default function DashboardPage() {
         )}
 
         {!isLoading && !fetchGroupsError && groups && (
-          <div>
+          <div className="mb-8">
             {groups.length === 0 ? (
               <p>You are not a member of any groups yet. Create one above!</p>
             ) : (
@@ -135,7 +169,61 @@ export default function DashboardPage() {
             )}
           </div>
         )}
-        {/* --- End Display Groups List --- */}
+
+        {/* --- DELETED Groups List & Restore Button --- */}
+        <div className="mt-8 pt-6 border-t">
+          <h2 className="text-xl font-semibold mb-3 text-gray-600">
+            Archived Groups
+          </h2>
+          {/* Display restore error if any */}
+          {restoreError && (
+            <p className="text-red-500 mb-2 text-sm">{restoreError}</p>
+          )}
+
+          {deletedLoading && <p>Loading archived groups...</p>}
+          {fetchDeletedError && (
+            <p className="text-red-500">
+              Error loading archived groups: {fetchDeletedError.message}
+            </p>
+          )}
+          {!deletedLoading && !fetchDeletedError && deletedGroups && (
+            <div>
+              {deletedGroups.length === 0 ? (
+                <p className="text-gray-500">No archived groups found.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {deletedGroups.map((group) => (
+                    <li
+                      key={group.id}
+                      className="p-3 border rounded bg-gray-100 opacity-70 flex justify-between items-center"
+                    >
+                      <div>
+                        <span className="font-semibold text-lg text-gray-500 line-through">
+                          {group.name}
+                        </span>
+                        <p className="text-sm text-gray-400">
+                          Archived on:{" "}
+                          {group.deletedAt
+                            ? new Date(group.deletedAt).toLocaleDateString()
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreGroup(group.id)}
+                        disabled={restoringGroupId === group.id}
+                        className="p-1 px-3 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                      >
+                        {restoringGroupId === group.id
+                          ? "Restoring..."
+                          : "Restore"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </ProtectedLayout>
   );

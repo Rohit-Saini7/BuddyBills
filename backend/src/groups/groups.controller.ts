@@ -79,15 +79,6 @@ export class GroupsController {
     return this.groupsService.update(id, updateGroupDto, req.user.userId);
   }
 
-  @Delete(":id")
-  @HttpCode(HttpStatus.NO_CONTENT) // Return 204 No Content on success
-  async remove(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Req() req: AuthenticatedRequest
-  ): Promise<void> {
-    return this.groupsService.remove(id, req.user.userId);
-  }
-
   // --- Group Members ---
   @Post(":groupId/members") // Route to add member
   async addMember(
@@ -112,7 +103,31 @@ export class GroupsController {
     return this.groupsService.findGroupMembers(groupId, req.user.userId);
   }
 
-  @Delete(':groupId/members/me') // Use '/me' convention for self-action
+  // --- Method to DELETE a Group ---
+  @Delete(':id') // DELETE /api/groups/:id
+  @HttpCode(HttpStatus.NO_CONTENT) // Return 204 No Content on success
+  async deleteGroup( // Changed method name for clarity
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<void> {
+    const requestingUserId = req.user.userId;
+    await this.groupsService.deleteGroup(id, requestingUserId); // Call the specific deleteGroup service method
+  }
+
+  // --- Method to RESTORE a Soft-Deleted Group ---
+  @Patch(':id/restore') // PATCH /api/groups/:id/restore
+  @HttpCode(HttpStatus.NO_CONTENT) // Or OK if returning the restored group
+  async restoreGroup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<void> { // Return void for 204 response
+    const requestingUserId = req.user.userId;
+    await this.groupsService.restoreGroup(id, requestingUserId);
+    // No content returned on success
+  }
+
+  // --- DELETE /:groupId/members/me ---
+  @Delete(':groupId/members/me')
   @HttpCode(HttpStatus.NO_CONTENT)
   async leaveGroup(
     @Param('groupId', ParseUUIDPipe) groupId: string,
@@ -189,5 +204,15 @@ export class GroupsController {
       groupId,
       paidByUserId
     );
+  }
+
+  // --- Method to GET Soft-Deleted Groups created by the user ---
+  @Get('deleted/mine') // GET /api/groups/deleted/mine
+  async findMyDeletedGroups(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<GroupResponseDto[]> { // Returns array of Group DTOs
+    const requestingUserId = req.user.userId;
+    // Service returns entities, interceptor transforms them
+    return this.groupsService.findDeletedGroupsForCreator(requestingUserId);
   }
 }

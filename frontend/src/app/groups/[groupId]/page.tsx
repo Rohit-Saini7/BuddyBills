@@ -90,7 +90,11 @@ export default function GroupDetailPage() {
   const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const [leaveGroupError, setLeaveGroupError] = useState<string | null>(null);
 
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
+
   // --- SWR Hooks ---
+  const allGroupsApiUrl = "/groups";
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
   const {
     data: group,
@@ -174,6 +178,18 @@ export default function GroupDetailPage() {
     percentageTotal,
     sharesTotal,
   ]);
+
+  const isSettledUp = useMemo(() => {
+    if (!balances || balances.length === 0) {
+      // If no balances (e.g., only one member) or still loading, consider it settled for UI purposes
+      // Or handle loading state separately if preferred
+      return true;
+    }
+    const tolerance = 0.01; // Use same tolerance as backend check
+    return balances.every(
+      (balance) => Math.abs(balance.netBalance) < tolerance
+    );
+  }, [balances]);
 
   // --- Handlers ---
 
@@ -418,6 +434,41 @@ export default function GroupDetailPage() {
     }
   };
 
+  // --- NEW Handler for Deleting Group ---
+  const handleDeleteGroup = useCallback(async () => {
+    if (!group) return; // Should have group data if button is visible
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete the group "${group.name}"? This action cannot be easily undone.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingGroup(true);
+    setDeleteGroupError(null);
+
+    try {
+      await apiClient.delete(`/groups/${group.id}`);
+
+      // Show feedback
+      alert(`Group "${group.name}" deleted successfully.`); // Replace with toast later
+
+      // Mutate the main list of groups so it disappears from the dashboard
+      mutate(allGroupsApiUrl);
+
+      // Redirect user away from the now-deleted group page
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Failed to delete group:", error);
+      setDeleteGroupError(error.message || "Could not delete group.");
+      // Don't reset loading state here so button stays disabled on error? Or reset? Let's reset.
+      setIsDeletingGroup(false);
+    }
+    // No finally needed if redirecting on success
+  }, [group, mutate, allGroupsApiUrl, router]);
+
   const handleCancelEditName = () => {
     setIsEditingName(false);
     setEditNameError(null);
@@ -540,6 +591,35 @@ export default function GroupDetailPage() {
 
         {!isLoading && !groupError && group && (
           <div className="space-y-6">
+            {loggedInUser?.id === group.created_by_user_id && (
+              <div className="p-4 border border-red-300 rounded bg-red-50">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">
+                  Danger Zone
+                </h3>
+                {!isSettledUp && ( // Show warning if not settled
+                  <p className="text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 p-2 rounded mb-3">
+                    Cannot delete group: Balances are not fully settled. Ask
+                    members to record payments first.
+                  </p>
+                )}
+                <p className="text-sm text-red-700 mb-3">
+                  Deleting the group will archive it for all members.
+                </p>
+
+                <button
+                  onClick={handleDeleteGroup}
+                  disabled={isDeletingGroup}
+                  className="p-2 px-4 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingGroup ? "Deleting..." : "Delete This Group"}
+                </button>
+                {deleteGroupError && (
+                  <p className="text-red-600 mt-2 text-sm">
+                    {deleteGroupError}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="flex items-center space-x-3 mb-4">
               {isEditingName ? (
                 // --- Editing State ---

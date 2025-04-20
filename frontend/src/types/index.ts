@@ -39,6 +39,7 @@ export interface GroupResponseDto {
   name: string;
   created_by_user_id: string;
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export interface CreateExpenseDto {

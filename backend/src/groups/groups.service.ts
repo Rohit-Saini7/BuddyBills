@@ -10,7 +10,7 @@ import { Expense } from 'src/expenses/entities/expense.entity';
 import { BalanceResponseDto } from 'src/groups/dto/balance-response.dto';
 import { MemberRemovalType } from 'src/groups/dto/member-removal-type.enum';
 import { Payment } from 'src/payments/entities/payment.entity';
-import { Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity'; // Import User entity
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -63,20 +63,40 @@ export class GroupsService {
     return savedGroup; // Return the created group
   }
 
-  // --- FIND Groups for User ---
-  // (This should find groups the user is a MEMBER of, not just created)
+  // --- FIND Active Groups for User (Refined) ---
   async findAllForUser(userId: string): Promise<Group[]> {
-    // Find group memberships for the user
-    const memberships = await this.groupMemberRepository.find({
-      where: { user_id: userId },
-      relations: ['group'], // Load the related group data for each membership
-      order: { group: { createdAt: 'DESC' } } // Order by group creation date
+    // 1. Find all ACTIVE group memberships for the user.
+    const activeMemberships = await this.groupMemberRepository.find({
+      select: ['group_id'], // Select only the group ID
+      where: {
+        user_id: userId,
+        deletedAt: IsNull(),
+      },
     });
 
-    // Extract the group objects from the memberships
-    return memberships.map(member => member.group);
-  }
+    // 2. If the user has no active memberships, return empty array.
+    if (!activeMemberships || activeMemberships.length === 0) {
+      return [];
+    }
 
+    // 3. Extract the unique group IDs the user is an active member of.
+    const groupIds = activeMemberships.map(m => m.group_id);
+
+    // 4. Find all ACTIVE groups matching those IDs.
+    const activeGroups = await this.groupRepository.find({
+      where: {
+        id: In(groupIds), // Find groups whose IDs are in our list
+        deletedAt: IsNull(), // <<< Explicitly find only ACTIVE groups
+      },
+      order: {
+        createdAt: 'DESC', // Or order by name, etc.
+      },
+      // Optionally load relations needed for the dashboard list display
+      // relations: ['createdBy']
+    });
+
+    return activeGroups;
+  }
   // --- FIND One Group by ID (with Access Check) ---
   async findOneById(id: string, userId: string): Promise<Group> {
     const group = await this.groupRepository.findOneBy({ id });
@@ -143,15 +163,82 @@ export class GroupsService {
   }
 
   // --- DELETE Group ---
-  async remove(id: string, userId: string): Promise<void> {
-    const group = await this.findOneById(id, userId); // Use findOneById to ensure user has access
-
-    // Basic check: Only allow the creator to delete the group (adjust logic as needed)
-    if (group.created_by_user_id !== userId) {
-      throw new ForbiddenException('Only the group creator can delete the group.');
+  async deleteGroup(groupId: string, requestingUserId: string): Promise<void> {
+    // 1. Find the group
+    const group = await this.groupRepository.findOneBy({ id: groupId });
+    if (!group) {
+      throw new NotFoundException(`Group with ID "${groupId}" not found.`);
     }
 
-    await this.groupRepository.remove(group); // TypeORM handles cascading deletes based on entity relations/DB constraints
+    // 2. Authorization: Check if the requester is the original creator
+    if (group.created_by_user_id !== requestingUserId) {
+      throw new ForbiddenException('Only the group creator can delete this group.');
+    }
+
+    // 3. Check if all members are settled up
+    const balances = await this.getGroupBalances(groupId, requestingUserId);
+    const tolerance = 0.01; // Allow for small floating point differences (e.g., 1 cent)
+    const isSettled = balances.every(balance => Math.abs(balance.netBalance) < tolerance);
+
+    if (!isSettled) {
+      throw new BadRequestException('Cannot delete group. All members must be settled up (balances must be zero) first.');
+    }
+
+    // 4. Perform SOFT delete using TypeORM's built-in method
+    // This sets the `deletedAt` column to the current time.
+    try {
+      // Using softRemove requires the entity instance
+      await this.groupRepository.softRemove(group);
+      // Alternative: using softDelete requires criteria
+      // await this.groupRepository.softDelete({ id: groupId });
+    } catch (error) {
+      console.error(`Failed to soft delete group ${groupId}:`, error);
+      throw new InternalServerErrorException('Could not delete group.');
+    }
+
+    // Note: Related records (members, expenses, payments) are NOT automatically
+    // soft-deleted. They remain in the database but might become inaccessible
+    // if queries correctly filter based on the group's (now soft-deleted) status.
+  }
+
+  // --- RESTORE Soft-Deleted Group (by Creator) ---
+  async restoreGroup(groupId: string, requestingUserId: string): Promise<void> {
+    // 1. Find the group, including soft-deleted ones
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      withDeleted: true, // <<< Important: Find even if soft-deleted
+    });
+
+    if (!group) {
+      throw new NotFoundException(`Group with ID "${groupId}" not found.`);
+    }
+
+    // 2. Check if the group is actually deleted
+    if (!group.deletedAt) {
+      throw new BadRequestException(`Group "${groupId}" is already active.`);
+    }
+
+    // 3. Authorization: Check if the requester is the original creator
+    if (group.created_by_user_id !== requestingUserId) {
+      throw new ForbiddenException('Only the group creator can restore this group.');
+    }
+
+    // 4. Perform restore using TypeORM's built-in method
+    // This sets the `deletedAt` column back to NULL
+    try {
+      const restoreResult = await this.groupRepository.restore({ id: groupId });
+      if (restoreResult.affected === 0) {
+        // Should not happen if findOne succeeded, but safety check
+        throw new InternalServerErrorException(`Group "${groupId}" could not be restored.`);
+      }
+    } catch (error) {
+      console.error(`Failed to restore group ${groupId}:`, error);
+      throw new InternalServerErrorException('Could not restore group.');
+    }
+
+    // Note: This doesn't automatically restore soft-deleted GroupMember records.
+    // If members left or were removed while the group was deleted, they remain inactive.
+    // Reactivating them would require separate logic/UI.
   }
 
   // --- ADD Group Member ---
@@ -415,5 +502,19 @@ export class GroupsService {
     balanceResponse.sort((a, b) => (a.user.name || a.user.email).localeCompare(b.user.name || b.user.email));
 
     return balanceResponse;
+  }
+
+  // --- Find Deleted Groups Created By User ---
+  async findDeletedGroupsForCreator(requestingUserId: string): Promise<Group[]> {
+    return this.groupRepository.find({
+      where: {
+        created_by_user_id: requestingUserId,
+        deletedAt: Not(IsNull()), // Filter for non-null deletedAt
+      },
+      withDeleted: true, // <<< Must include this to find them
+      order: {
+        deletedAt: 'DESC', // Show most recently deleted first
+      },
+    });
   }
 }

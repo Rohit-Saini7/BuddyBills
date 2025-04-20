@@ -1,16 +1,17 @@
-import { User } from "../../users/entities/user.entity";
-import { Expense } from "../../expenses/entities/expense.entity";
-import { Payment } from "../../payments/entities/payment.entity";
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  JoinColumn,
 } from "typeorm";
+import { Expense } from "../../expenses/entities/expense.entity";
+import { Payment } from "../../payments/entities/payment.entity";
+import { User } from "../../users/entities/user.entity";
 import { GroupMember } from "./group-member.entity";
 
 @Entity("groups")
@@ -30,6 +31,10 @@ export class Group {
 
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp with time zone', nullable: true })
+  deletedAt?: Date | null;
+
 
   // --- Relationships ---
 
