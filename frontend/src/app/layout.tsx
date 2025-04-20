@@ -28,9 +28,9 @@ export default function RootLayout({
       <head>
         {/* --- PWA Meta Tags --- */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#4285F4" />{" "}
+        <meta name="theme-color" content="#4285F4" />
         {/* Match manifest theme_color */}
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />{" "}
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         {/* Adjust path if needed */}
         {/* Add other meta tags if needed (e.g., viewport already handled by Next.js) */}
       </head>

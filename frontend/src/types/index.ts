@@ -1,3 +1,10 @@
+export enum SplitType {
+  EQUAL = 'EQUAL',
+  EXACT = 'EXACT',
+  // PERCENTAGE = 'PERCENTAGE',
+  // SHARE = 'SHARE',
+}
+
 export interface UserResponseDto {
   id: string;
   email: string;
@@ -61,6 +68,19 @@ export interface PaymentResponseDto {
   createdAt: string;    // ISO string
   // paidBy?: UserResponseDto; // Add if backend includes this relation
   // paidTo?: UserResponseDto; // Add if backend includes this relation
+}
+
+export interface ExpenseSplitInputDto {
+  user_id: string;
+  amount: number;
+}
+
+export interface CreateExpenseDto {
+  description: string;
+  amount: number; // Total amount
+  transaction_date: string; // YYYY-MM-DD format
+  split_type: SplitType; // Now required
+  splits?: ExpenseSplitInputDto[]; // Optional array for EXACT/etc. splits
 }
 
 // Optional: Add ExpenseSplitResponseDto if you load splits

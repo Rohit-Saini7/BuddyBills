@@ -7,9 +7,11 @@ import {
   CreateExpenseDto,
   CreatePaymentDto,
   ExpenseResponseDto,
+  ExpenseSplitInputDto,
   GroupMemberResponseDto,
   GroupResponseDto,
   PaymentResponseDto,
+  SplitType,
 } from "@/types";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
@@ -38,6 +40,13 @@ export default function GroupDetailPage() {
   ); // Default to today YYYY-MM-DD
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
+
+  // --- NEW State for Split Logic ---
+  const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL); // Default to EQUAL
+  // Store exact amounts as strings mapped by userId for easier input handling
+  const [exactSplits, setExactSplits] = useState<{ [userId: string]: string }>(
+    {}
+  );
 
   // --- State for Add Member Form (from previous step) ---
   const [memberEmail, setMemberEmail] = useState("");
@@ -84,6 +93,20 @@ export default function GroupDetailPage() {
     isLoading: balancesLoading,
   } = useSWR(balancesApiUrl, fetchBalances);
 
+  // --- Calculated value for exact split validation ---
+  const currentExactSplitTotal = Object.values(exactSplits).reduce(
+    (sum, amountStr) => {
+      const amount = parseFloat(amountStr);
+      return sum + (isNaN(amount) ? 0 : amount);
+    },
+    0
+  );
+
+  const totalExpenseAmountNumber = parseFloat(expenseAmount);
+  const remainingAmount = !isNaN(totalExpenseAmountNumber)
+    ? totalExpenseAmountNumber - currentExactSplitTotal
+    : 0;
+
   // --- Handlers ---
 
   // Add Member Handler (from previous step)
@@ -117,6 +140,7 @@ export default function GroupDetailPage() {
   const handleAddExpense = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amountNumber = parseFloat(expenseAmount);
+    setAddExpenseError(null); // Clear previous errors
 
     if (
       !expenseDescription.trim() ||
@@ -132,31 +156,93 @@ export default function GroupDetailPage() {
     }
     if (!groupId) return;
 
-    setIsAddingExpense(true);
-    setAddExpenseError(null);
-
-    const expenseData: CreateExpenseDto = {
+    let expensePayload: Partial<CreateExpenseDto> = {
+      // Use Partial initially
       description: expenseDescription,
       amount: amountNumber,
       transaction_date: expenseDate,
+      split_type: splitType,
     };
 
+    if (splitType === SplitType.EXACT) {
+      const splitsArray: ExpenseSplitInputDto[] = [];
+      let calculatedSum = 0;
+
+      // Ensure all members have a value (even if 0) and are valid numbers
+      const memberIds = members?.map((m) => m.user.id) || [];
+      for (const memberId of memberIds) {
+        const amountStr = exactSplits[memberId] || "0"; // Default to '0' if empty
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount < 0) {
+          setAddExpenseError(
+            `Invalid amount entered for a member. Please enter positive numbers or 0.`
+          );
+          return;
+        }
+        // Only include splits with non-zero amounts in payload? Or include all? Backend likely expects only non-zero contributions typically. Let's send non-zero ones.
+        if (amount > 0.005) {
+          // Add only if amount is positive (handle floating point)
+          splitsArray.push({
+            user_id: memberId,
+            amount: parseFloat(amount.toFixed(2)),
+          });
+          calculatedSum += amount;
+        }
+      }
+
+      // Check if sum matches total amount (use tolerance)
+      const tolerance = 0.015; // Allow for rounding diff up to ~1 cent total
+      if (Math.abs(calculatedSum - amountNumber) > tolerance) {
+        setAddExpenseError(
+          `The exact amounts entered (£${calculatedSum.toFixed(2)}) do not add up to the total expense amount (£${amountNumber.toFixed(2)}). Remaining: £${(amountNumber - calculatedSum).toFixed(2)}`
+        );
+        return;
+      }
+      if (splitsArray.length === 0) {
+        setAddExpenseError(
+          `Please specify at least one person's share for exact splits.`
+        );
+        return;
+      }
+      expensePayload.splits = splitsArray;
+    }
+
+    setIsAddingExpense(true);
+
     try {
+      // Send the payload (includes split_type and potentially splits)
       await apiClient.post<ExpenseResponseDto>(
         `/groups/${groupId}/expenses`,
-        expenseData
+        expensePayload
       );
+
       // Clear form on success
       setExpenseDescription("");
       setExpenseAmount("");
       setExpenseDate(new Date().toISOString().split("T")[0]);
-      // Revalidate expenses list
+      setSplitType(SplitType.EQUAL); // Reset split type
+      setExactSplits({}); // Reset exact splits
+      setAddExpenseError(null);
+
+      // Revalidate expenses AND balances
       mutate(expensesApiUrl);
+      mutate(balancesApiUrl);
     } catch (error: any) {
       console.error("Failed to add expense:", error);
       setAddExpenseError(error.message || "Failed to add expense.");
     } finally {
       setIsAddingExpense(false);
+    }
+  };
+
+  // --- Handler for Exact Split Input Changes ---
+  const handleExactSplitChange = (userId: string, value: string) => {
+    // Allow empty string, numbers, and one decimal point
+    if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
+      setExactSplits((prev) => ({
+        ...prev,
+        [userId]: value,
+      }));
     }
   };
 
@@ -216,6 +302,7 @@ export default function GroupDetailPage() {
   return (
     <ProtectedLayout>
       <div className="container mx-auto p-4">
+        {/* Back Link */}
         <div className="mb-4">
           <Link href="/dashboard" className="text-blue-500 hover:underline">
             &larr; Back to Dashboard
@@ -423,7 +510,7 @@ export default function GroupDetailPage() {
                       htmlFor="amount"
                       className="block text-sm font-medium text-gray-700"
                     >
-                      Amount
+                      Total Amount(₹)
                     </label>
                     <input
                       type="number"
@@ -456,6 +543,92 @@ export default function GroupDetailPage() {
                     />
                   </div>
                 </div>
+
+                {/* --- Split Method Selector --- */}
+                <div>
+                  <label
+                    htmlFor="splitType"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    {" "}
+                    Split Method{" "}
+                  </label>
+                  <select
+                    id="splitType"
+                    value={splitType}
+                    onChange={(e) => setSplitType(e.target.value as SplitType)}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm bg-white"
+                    disabled={isAddingExpense}
+                  >
+                    <option value={SplitType.EQUAL}>
+                      {" "}
+                      Split Equally(among all members){" "}
+                    </option>
+                    <option value={SplitType.EXACT}>
+                      {" "}
+                      Split by Exact Amounts{" "}
+                    </option>
+                    {/* Add PERCENTAGE, SHARE later */}
+                  </select>
+                </div>
+
+                {/* --- Conditional Inputs for EXACT Split --- */}
+                {splitType === SplitType.EXACT && (
+                  <div className="space-y-2 pt-2 border-t mt-3">
+                    <h3 className="text-md font-medium text-gray-800">
+                      {" "}
+                      Enter Exact Amounts Owed:{" "}
+                    </h3>
+                    {membersLoading && <p>Loading members...</p>}
+                    {membersError && (
+                      <p className="text-red-500">
+                        {" "}
+                        Error loading members for split.
+                      </p>
+                    )}
+                    {members &&
+                      members.map((member) => (
+                        <div
+                          key={member.user.id}
+                          className="flex items-center justify-between space-x-2"
+                        >
+                          <label
+                            htmlFor={`split-${member.user.id}`}
+                            className="flex-grow text-sm text-gray-600"
+                          >
+                            {member.user.name || member.user.email}
+                            {member.user.id === loggedInUser?.id
+                              ? " (You)"
+                              : ""}
+                          </label>
+                          <input
+                            type="number"
+                            id={`split-${member.user.id}`}
+                            value={exactSplits[member.user.id] || ""}
+                            onChange={(e) =>
+                              handleExactSplitChange(
+                                member.user.id,
+                                e.target.value
+                              )
+                            }
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            className="p-1 border rounded w-24 text-right"
+                            disabled={isAddingExpense}
+                          />
+                        </div>
+                      ))}
+                    {/* Display sum validation helper */}
+                    <div
+                      className={`mt-2 text-sm font-medium ${Math.abs(remainingAmount) < 0.015 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      Total Assigned: ₹{currentExactSplitTotal.toFixed(2)} / ₹
+                      {(totalExpenseAmountNumber || 0).toFixed(2)}
+                      (Remaining: ₹{remainingAmount.toFixed(2)})
+                    </div>
+                  </div>
+                )}
                 <button
                   type="submit"
                   className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"

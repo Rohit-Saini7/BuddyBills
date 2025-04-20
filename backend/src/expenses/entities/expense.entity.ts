@@ -1,3 +1,4 @@
+import { SplitType } from 'src/expenses/dto/expense-split.type';
 import {
   Column,
   CreateDateColumn,
@@ -40,6 +41,14 @@ export class Expense {
 
   @Column({ type: "date" }) // Use 'date' type
   transaction_date: string; // TypeORM often maps DATE to string
+
+  @Column({
+    type: 'enum',
+    enum: SplitType,
+    default: SplitType.EQUAL, // Set default if desired
+  })
+  split_type: SplitType;
+
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   createdAt: Date;
