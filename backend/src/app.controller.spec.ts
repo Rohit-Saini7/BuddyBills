@@ -16,9 +16,9 @@ describe("AppController", () => {
 
   describe("root", () => {
     it('should return "Hello World!"', () => {
-      expect(appController.getHealth()).toBe({
-        status: "ok",
-        time: new Date().toISOString(),
+      expect(appController.getHealth()).toEqual({
+        status: 'ok',
+        time: expect.any(String),
       });
     });
   });

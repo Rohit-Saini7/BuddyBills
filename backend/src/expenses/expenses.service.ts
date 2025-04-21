@@ -434,6 +434,7 @@ export class ExpensesService {
     // No return value needed for successful delete
   }
 
+  // --- Soft DELETE Expense ---
   async softRemoveExpense(
     expenseId: string,
     requestingUserId: string
