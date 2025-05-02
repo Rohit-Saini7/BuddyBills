@@ -12,23 +12,20 @@ export class ExpenseSplitInputDto {
   @IsNotEmpty()
   user_id: string;
 
-  // Used for EXACT splits
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive() // If provided for exact, must be positive
+  @IsPositive()
   amount?: number;
 
-  // Used for PERCENTAGE splits
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 4 }) // Allow more precision for percentages if needed
+  @IsNumber({ maxDecimalPlaces: 4 })
   @IsPositive()
-  @Min(0.0001) // Percentage must be greater than 0 if provided
+  @Min(0.0001)
   percentage?: number;
 
-  // Used for SHARE splits
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 4 }) // Allow fractional shares if needed
+  @IsNumber({ maxDecimalPlaces: 4 })
   @IsPositive()
-  @Min(0.0001) // Shares must be greater than 0 if provided
+  @Min(0.0001)
   shares?: number;
 }

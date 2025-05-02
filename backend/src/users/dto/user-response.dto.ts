@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose } from "class-transformer";
 
 @Exclude()
 export class UserResponseDto {
@@ -16,6 +16,4 @@ export class UserResponseDto {
 
   @Expose()
   createdAt: Date;
-
-  // We explicitly DO NOT Expose google_id or updatedAt unless needed
 }

@@ -1,44 +1,48 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'; // Import UnauthorizedException
-import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { Profile, Strategy } from 'passport-google-oauth20'; // No VerifyCallback needed
-import { User } from '../../users/entities/user.entity'; // Import User
-import { AuthService } from '../auth.service';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PassportStrategy } from "@nestjs/passport";
+import { Profile, Strategy } from "passport-google-oauth20";
+import { User } from "../../users/entities/user.entity";
+import { AuthService } from "../auth.service";
 
 @Injectable()
-export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   constructor(
     private readonly configService: ConfigService,
-    private readonly authService: AuthService,
+    private readonly authService: AuthService
   ) {
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID') ?? '',
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') ?? '',
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL') ?? '',
-      scope: ['profile', 'email'],
+      clientID: configService.get<string>("GOOGLE_CLIENT_ID") ?? "",
+      clientSecret: configService.get<string>("GOOGLE_CLIENT_SECRET") ?? "",
+      callbackURL: configService.get<string>("GOOGLE_CALLBACK_URL") ?? "",
+      scope: ["profile", "email"],
     });
   }
 
-  // Corrected validate method for NestJS
   async validate(
     _accessToken: string,
     _refreshToken: string,
-    profile: Profile,
-  ): Promise<User> { // Return the User object directly
+    profile: Profile
+  ): Promise<User> {
+    let user: User | null;
+
     try {
-      // Use AuthService to find or create the user based on the Google profile
-      const user = await this.authService.validateUserByGoogleProfile(profile);
-      if (!user) {
-        // Although authService should handle this, add a fallback check
-        throw new UnauthorizedException('Could not validate or create user from Google profile.');
-      }
-      // Return the user object. NestJS/Passport attaches this to req.user
-      return user;
+      user = await this.authService.validateUserByGoogleProfile(profile);
     } catch (error) {
-      // Log the original error for debugging if needed
-      console.error("Error during Google strategy validation:", error);
-      // Throw a standard NestJS exception
-      throw new UnauthorizedException('Authentication failed during Google validation.');
+      console.error(
+        "Error calling authService.validateUserByGoogleProfile:",
+        error
+      );
+      throw new UnauthorizedException(
+        "Authentication failed during Google validation."
+      );
     }
+    if (!user) {
+      throw new UnauthorizedException(
+        "Could not validate or create user from Google profile."
+      );
+    }
+
+    return user;
   }
 }

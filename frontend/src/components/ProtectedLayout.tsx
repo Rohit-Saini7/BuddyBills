@@ -14,12 +14,12 @@ export default function ProtectedLayout({
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/"); // Redirect if not logged in after check
+      router.push("/");
     }
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading || !isAuthenticated) {
-    return <div>Loading...</div>; // Or a spinner
+    return <div>Loading...</div>;
   }
 
   return <>{children}</>;

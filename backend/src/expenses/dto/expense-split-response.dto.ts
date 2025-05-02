@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose } from "class-transformer";
 
 @Exclude()
 export class ExpenseSplitResponseDto {
@@ -12,10 +12,5 @@ export class ExpenseSplitResponseDto {
   owed_by_user_id: string;
 
   @Expose()
-  amount: number; // Already transformed
-
-  // Optional: Expose related user
-  // @Expose()
-  // @Type(() => UserResponseDto)
-  // owedBy: UserResponseDto;
+  amount: number;
 }

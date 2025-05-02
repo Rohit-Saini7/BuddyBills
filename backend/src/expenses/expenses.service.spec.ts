@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm"; // Import helper
+import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource, ObjectLiteral, Repository } from "typeorm";
 
 import {
@@ -37,7 +37,7 @@ const createMockRepository = <
   findOneOrFail: jest.fn(),
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 const createMockDataSource = () => ({
   createQueryRunner: jest.fn().mockReturnValue({
     connect: jest.fn(),
@@ -105,19 +105,18 @@ describe("ExpensesService", () => {
   ];
 
   beforeAll(() => {
-    // Runs once before any tests in this file
-    console.error = jest.fn(); // Replace with mock
+    console.error = jest.fn();
   });
 
   beforeEach(async () => {
-    // --- Create mock service instance ---
+    //* --- Create mock service instance ---
     mockGroupsService = {
       findGroupMembers: jest.fn(),
       findOneById: jest.fn(),
       isMember: jest.fn(),
     };
 
-    // --- Create the mock runner and manager objects directly ---
+    //* --- Create the mock runner and manager objects directly ---
     const manager = {
       save: jest.fn(),
       create: jest.fn(),
@@ -128,22 +127,19 @@ describe("ExpensesService", () => {
       update: jest.fn(),
       findOneOrFail: jest.fn(),
     };
-    // Assign to the higher scope variable mockQueryRunner
+
     mockQueryRunner = {
-      connect: jest.fn().mockResolvedValue(undefined), // Mock async methods
+      connect: jest.fn().mockResolvedValue(undefined),
       startTransaction: jest.fn().mockResolvedValue(undefined),
       commitTransaction: jest.fn().mockResolvedValue(undefined),
       rollbackTransaction: jest.fn().mockResolvedValue(undefined),
       release: jest.fn().mockResolvedValue(undefined),
       manager: manager,
     };
-    // Assign to the higher scope variable mockQueryRunnerManager
     mockQueryRunnerManager = manager;
 
-    // --- Configure the mockDataSource ---
-    // Assign to the higher scope variable mockDataSource
+    //* --- Configure the mockDataSource ---
     mockDataSource = {
-      // Set up the mock function to RETURN the pre-defined mockQueryRunner
       createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
     };
     const module: TestingModule = await Test.createTestingModule({
@@ -157,18 +153,18 @@ describe("ExpensesService", () => {
           provide: getRepositoryToken(ExpenseSplit),
           useFactory: createMockRepository,
         },
-        { provide: getRepositoryToken(User), useFactory: createMockRepository }, // Provide mock User repo
+        { provide: getRepositoryToken(User), useFactory: createMockRepository },
         { provide: GroupsService, useValue: mockGroupsService },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
-    // --- Get instances ---
+    //* --- Get instances ---
     service = module.get<ExpensesService>(ExpensesService);
     mockExpenseRepository = module.get(getRepositoryToken(Expense));
   });
 
-  // --- Clear mocks after each test ---
+  //* --- Clear mocks after each test ---
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -177,18 +173,18 @@ describe("ExpensesService", () => {
     expect(service).toBeDefined();
   });
 
-  // --- Tests for createExpense ---
+  //* --- Tests for createExpense ---
   describe("createExpense", () => {
-    // --- Common Setup for createExpense ---
+    //* --- Common Setup for createExpense ---
     const createExpenseDtoBase: CreateExpenseDto = {
       description: "Test Dinner",
       amount: 30.0,
       transaction_date: new Date().toString(),
-      split_type: SplitType.EQUAL, // Default, override in tests
-      splits: [], // Default, override in tests
+      split_type: SplitType.EQUAL,
+      splits: [],
     };
 
-    // --- Success Scenarios ---
+    //* --- Success Scenarios ---
 
     it("should successfully create an EQUAL split expense", async () => {
       const dto: CreateExpenseDto = {
@@ -203,15 +199,15 @@ describe("ExpensesService", () => {
         paid_by_user_id: mockPayerId,
       } as unknown as Expense;
 
-      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers); // 3 members
+      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
       mockQueryRunnerManager.create.mockImplementation(
         (_entityType: any, data: any) => ({ ...data })
-      ); // Simple mock create
+      );
       mockQueryRunnerManager.save.mockImplementation(
         async (entityType: typeof Expense, data: Expense) => {
           if (entityType === Expense)
-            return { ...data, id: mockSavedExpense.id } as Expense; // Assign ID to saved expense
-          return { ...data, id: `split-${Math.random()}` }; // Simulate saving splits
+            return { ...data, id: mockSavedExpense.id } as Expense;
+          return { ...data, id: `split-${Math.random()}` };
         }
       );
 
@@ -225,7 +221,7 @@ describe("ExpensesService", () => {
       expect(mockQueryRunner.connect).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.startTransaction).toHaveBeenCalledTimes(1);
 
-      // Verify Expense creation
+      //? Verify Expense creation
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(
         Expense,
         expect.objectContaining({
@@ -238,15 +234,15 @@ describe("ExpensesService", () => {
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         Expense,
         expect.any(Object)
-      ); // Saved the main expense
+      );
 
-      // Verify ExpenseSplit creation (3 members, $10 each)
+      //? Verify ExpenseSplit creation (3 members, $10 each)
       expect(mockQueryRunnerManager.create).toHaveBeenCalledTimes(
         1 + mockMembers.length
-      ); // 1 for Expense, 3 for Splits
+      );
       expect(mockQueryRunnerManager.save).toHaveBeenCalledTimes(
         1 + mockMembers.length
-      ); // 1 for Expense, 3 for Splits
+      );
 
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockSavedExpense.id,
@@ -264,12 +260,12 @@ describe("ExpensesService", () => {
         amount: 10.0,
       });
 
-      // Verify Transaction Management
+      //? Verify Transaction Management
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
 
-      // Verify Return Value
+      //? Verify Return Value
       expect(result).toEqual(
         expect.objectContaining({ id: mockSavedExpense.id })
       );
@@ -280,7 +276,7 @@ describe("ExpensesService", () => {
         ...createExpenseDtoBase,
         amount: 10.0,
         split_type: SplitType.EQUAL,
-      }; // 10 / 3 = 3.333...
+      };
       const mockSavedExpense = {
         ...dto,
         id: "exp-2",
@@ -288,7 +284,7 @@ describe("ExpensesService", () => {
         paid_by_user_id: mockPayerId,
       } as unknown as Expense;
 
-      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers); // 3 members
+      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
       mockQueryRunnerManager.create.mockImplementation(
         (_entityType: any, data: any) => ({ ...data })
       );
@@ -302,13 +298,11 @@ describe("ExpensesService", () => {
 
       await service.createExpense(dto, mockGroupId, mockPayerId);
 
-      // Base split is floor(10/3 * 100) / 100 = floor(333.33) / 100 = 3.33
-      // Remainder is round((10 - (3.33 * 3)) * 100) = round((10 - 9.99) * 100) = round(0.01 * 100) = 1 cent
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockSavedExpense.id,
         owed_by_user_id: "user-1",
         amount: 3.34,
-      }); // Gets remainder
+      });
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockSavedExpense.id,
         owed_by_user_id: "user-2",
@@ -390,9 +384,9 @@ describe("ExpensesService", () => {
         amount: 100.0,
         split_type: SplitType.PERCENTAGE,
         splits: [
-          { user_id: "user-1", percentage: 30 }, // 30.00
-          { user_id: "user-2", percentage: 50 }, // 50.00
-          { user_id: "user-3", percentage: 20 }, // 20.00
+          { user_id: "user-1", percentage: 30 },
+          { user_id: "user-2", percentage: 50 },
+          { user_id: "user-3", percentage: 20 },
         ],
       };
       const mockSavedExpense = {
@@ -416,7 +410,6 @@ describe("ExpensesService", () => {
 
       await service.createExpense(dto, mockGroupId, mockPayerId);
 
-      // Assertions check the calculated amounts
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockSavedExpense.id,
         owed_by_user_id: "user-1",
@@ -447,12 +440,12 @@ describe("ExpensesService", () => {
     it("should successfully create a PERCENTAGE split expense with rounding", async () => {
       const dto: CreateExpenseDto = {
         ...createExpenseDtoBase,
-        amount: 10.0, // $10 total
+        amount: 10.0,
         split_type: SplitType.PERCENTAGE,
         splits: [
-          { user_id: "user-1", percentage: 33.33 }, // ~3.33
-          { user_id: "user-2", percentage: 33.33 }, // ~3.33
-          { user_id: "user-3", percentage: 33.34 }, // ~3.34 (total 100%)
+          { user_id: "user-1", percentage: 33.33 },
+          { user_id: "user-2", percentage: 33.33 },
+          { user_id: "user-3", percentage: 33.34 },
         ],
       };
       const mockSavedExpense = {
@@ -476,11 +469,6 @@ describe("ExpensesService", () => {
 
       await service.createExpense(dto, mockGroupId, mockPayerId);
 
-      // Preliminary amounts: 3.333, 3.333, 3.334 -> Rounded cents: 333, 333, 334 -> Sum: 1000 cents ($10)
-      // Remainder cents = 1000 - (333 + 333 + 334) = 0
-      // Note: The implementation might slightly differ in distributing rounding based on fractional parts,
-      // but the sum should always be correct. Let's test the expected final outcome.
-      // User 3 should have 3.34, the others 3.33
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockSavedExpense.id,
         owed_by_user_id: "user-3",
@@ -503,13 +491,13 @@ describe("ExpensesService", () => {
     it("should successfully create a SHARE split expense", async () => {
       const dto: CreateExpenseDto = {
         ...createExpenseDtoBase,
-        amount: 60.0, // $60 total
+        amount: 60.0,
         split_type: SplitType.SHARE,
         splits: [
-          { user_id: "user-1", shares: 1 }, // 1/6 * 60 = 10
-          { user_id: "user-2", shares: 2 }, // 2/6 * 60 = 20
-          { user_id: "user-3", shares: 3 }, // 3/6 * 60 = 30
-        ], // Total 6 shares
+          { user_id: "user-1", shares: 1 },
+          { user_id: "user-2", shares: 2 },
+          { user_id: "user-3", shares: 3 },
+        ],
       };
       const mockSavedExpense = {
         ...dto,
@@ -562,13 +550,13 @@ describe("ExpensesService", () => {
     it("should successfully create a SHARE split expense with rounding", async () => {
       const dto: CreateExpenseDto = {
         ...createExpenseDtoBase,
-        amount: 10.0, // $10 total
+        amount: 10.0,
         split_type: SplitType.SHARE,
         splits: [
-          { user_id: "user-1", shares: 1 }, // 1/3 * 10 = 3.33...
-          { user_id: "user-2", shares: 1 }, // 1/3 * 10 = 3.33...
-          { user_id: "user-3", shares: 1 }, // 1/3 * 10 = 3.33...
-        ], // Total 3 shares
+          { user_id: "user-1", shares: 1 },
+          { user_id: "user-2", shares: 1 },
+          { user_id: "user-3", shares: 1 },
+        ],
       };
       const mockSavedExpense = {
         ...dto,
@@ -591,22 +579,17 @@ describe("ExpensesService", () => {
 
       await service.createExpense(dto, mockGroupId, mockPayerId);
 
-      // Preliminary amounts: 3.333..., 3.333..., 3.333... -> Rounded Cents: 333, 333, 333 -> Sum: 999
-      // Total Cents: 1000. Remainder = 1 cent.
-      // Should distribute the 1 cent remainder to one user.
-      // Check that the sum is correct and distribution happened.
       const savedSplits = mockQueryRunnerManager.create.mock.calls
         .filter((call: (typeof ExpenseSplit)[]) => call[0] === ExpenseSplit)
-        .map((call: any[]) => call[1]); // Get the split data passed to 'create'
+        .map((call: any[]) => call[1]);
 
       expect(savedSplits.length).toBe(3);
       const totalSplitAmount = savedSplits.reduce(
         (sum: any, split: { amount: any }) => sum + split.amount,
         0
       );
-      expect(totalSplitAmount).toBeCloseTo(dto.amount, 2); // Check sum is correct
+      expect(totalSplitAmount).toBeCloseTo(dto.amount, 2);
 
-      // Check that splits are roughly correct and one got the extra cent
       expect(savedSplits).toContainEqual({
         expense_id: mockSavedExpense.id,
         owed_by_user_id: "user-1",
@@ -624,22 +607,22 @@ describe("ExpensesService", () => {
       });
       expect(
         savedSplits.filter((s: { amount: number }) => s.amount === 3.34).length
-      ).toBe(1); // Exactly one user got 3.34
+      ).toBe(1);
       expect(
         savedSplits.filter((s: { amount: number }) => s.amount === 3.33).length
-      ).toBe(2); // Exactly two users got 3.33
+      ).toBe(2);
 
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
     });
 
-    // --- Error Scenarios ---
+    //* --- Error Scenarios ---
 
     it("should throw BadRequestException if group has no members", async () => {
       const dto: CreateExpenseDto = {
         ...createExpenseDtoBase,
         split_type: SplitType.EQUAL,
       };
-      mockGroupsService.findGroupMembers!.mockResolvedValue([]); // No members found
+      mockGroupsService.findGroupMembers!.mockResolvedValue([]);
 
       await expect(
         service.createExpense(dto, mockGroupId, mockPayerId)
@@ -653,7 +636,7 @@ describe("ExpensesService", () => {
         mockGroupId,
         mockPayerId
       );
-      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled(); // Should fail before transaction starts
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
     it("should throw BadRequestException for EXACT split with no splits array", async () => {
@@ -683,7 +666,7 @@ describe("ExpensesService", () => {
         splits: [
           { user_id: "user-1", amount: 15 },
           { user_id: "user-99", amount: 15 },
-        ], // user-99 is not in mockMembers
+        ],
       };
       mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
 
@@ -705,7 +688,7 @@ describe("ExpensesService", () => {
         splits: [
           { user_id: "user-1", amount: 15 },
           { user_id: "user-1", amount: 15 },
-        ], // duplicate user-1
+        ],
       };
       mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
 
@@ -725,7 +708,7 @@ describe("ExpensesService", () => {
         splits: [
           { user_id: "user-1", amount: 10.0 },
           { user_id: "user-2", amount: 10.0 },
-          { user_id: "user-3", amount: 10.5 }, // Sum is 30.50
+          { user_id: "user-3", amount: 10.5 },
         ],
       };
       mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
@@ -740,8 +723,6 @@ describe("ExpensesService", () => {
       expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
-    // Add similar specific error tests for PERCENTAGE and SHARE (missing splits, user not member, duplicate user, invalid percentage/share, percentage sum != 100, total shares <= 0)
-
     it("should throw BadRequestException for PERCENTAGE split if percentages do not sum to 100", async () => {
       const dto: CreateExpenseDto = {
         ...createExpenseDtoBase,
@@ -750,7 +731,7 @@ describe("ExpensesService", () => {
         splits: [
           { user_id: "user-1", percentage: 30 },
           { user_id: "user-2", percentage: 50 },
-          { user_id: "user-3", percentage: 21 }, // Sum is 101%
+          { user_id: "user-3", percentage: 21 },
         ],
       };
       mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
@@ -804,7 +785,7 @@ describe("ExpensesService", () => {
       expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
-    // --- Transaction Error Scenarios ---
+    //* --- Transaction Error Scenarios ---
 
     it("should rollback transaction and throw InternalServerErrorException if saving Expense fails", async () => {
       const dto: CreateExpenseDto = {
@@ -821,7 +802,6 @@ describe("ExpensesService", () => {
       mockQueryRunnerManager.save.mockImplementation(
         async (entityType: typeof Expense, data: any) => {
           if (entityType === Expense) {
-            // Simulate error only when saving Expense
             throw saveError;
           }
           return { ...data, id: `split-${Math.random()}` };
@@ -841,14 +821,14 @@ describe("ExpensesService", () => {
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         Expense,
         expect.any(Object)
-      ); // Attempted to save Expense
+      );
       expect(mockQueryRunnerManager.save).not.toHaveBeenCalledWith(
         ExpenseSplit,
         expect.any(Object)
-      ); // Did not save Splits
+      );
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
-      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1); // Rollback occurred
-      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1); // Release occurred in finally
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
+      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
     it("should rollback transaction and throw InternalServerErrorException if saving ExpenseSplit fails", async () => {
@@ -873,7 +853,7 @@ describe("ExpensesService", () => {
         async (entityType: any, data: Expense) => {
           if (entityType === Expense)
             return { ...data, id: mockSavedExpense.id } as Expense;
-          if (entityType === ExpenseSplit) throw saveError; // Simulate error when saving splits
+          if (entityType === ExpenseSplit) throw saveError;
           return { ...data };
         }
       );
@@ -891,24 +871,23 @@ describe("ExpensesService", () => {
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         Expense,
         expect.any(Object)
-      ); // Saved Expense successfully
+      );
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         ExpenseSplit,
         expect.any(Object)
-      ); // Attempted to save Split
+      );
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
-      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1); // Rollback occurred
-      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1); // Release occurred in finally
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
+      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
   });
 
-  // --- Tests for updateExpense ---
+  //* --- Tests for updateExpense ---
   describe("updateExpense", () => {
     const mockExpenseId = "exp-existing-1";
-    const mockRequestingUserId = "user-payer-1"; // Should match paid_by_user_id below
+    const mockRequestingUserId = "user-payer-1";
     const mockGroupId = "group-abc";
     const mockMembers: GroupMember[] = [
-      // Same members as createExpense tests
       {
         group_id: mockGroupId,
         user_id: "user-payer-1",
@@ -938,63 +917,55 @@ describe("ExpensesService", () => {
       },
     ];
     let mockExistingExpense: Expense;
-    // Assume mockExpenseRepository is declared in the higher scope and obtained in the main beforeEach
-    // let mockExpenseRepository: MockRepository<Expense>;
 
     beforeEach(() => {
-      // Reset mock existing expense before each test
       mockExistingExpense = {
         id: mockExpenseId,
         description: "Original Dinner",
         amount: 60.0,
         transaction_date: new Date("2025-04-20T12:00:00Z"),
         group_id: mockGroupId,
-        paid_by_user_id: mockRequestingUserId, // Payer is the requesting user
-        split_type: SplitType.EQUAL, // Initial state is EQUAL
-        deletedAt: null, // IMPORTANT: Not deleted
+        paid_by_user_id: mockRequestingUserId,
+        split_type: SplitType.EQUAL,
+        deletedAt: null,
         createdAt: new Date("2025-04-20T12:00:00Z"),
         updatedAt: new Date("2025-04-20T12:00:00Z"),
         group: {
           id: mockGroupId,
           name: "Test Group",
           members: mockMembers,
-        } as any, // Mock relation needed for group ID
-        paidBy: { id: mockRequestingUserId, username: "payer" } as any, // Mock relation for final fetch result
-        splits: [], // Assume splits aren't loaded by default by findOne
+        } as any,
+        paidBy: { id: mockRequestingUserId, username: "payer" } as any,
+        splits: [],
       } as unknown as Expense;
 
-      // Configure default mock behaviors for update tests
-      // Use mockQueryRunnerManager for transaction-scoped operations
-      mockQueryRunnerManager.findOne.mockResolvedValue(mockExistingExpense); // Default: expense found
-      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers); // Default: members found
+      mockQueryRunnerManager.findOne.mockResolvedValue(mockExistingExpense);
+      mockGroupsService.findGroupMembers!.mockResolvedValue(mockMembers);
       mockQueryRunnerManager.update.mockResolvedValue({
         affected: 1,
         generatedMaps: [],
         raw: {},
-      }); // Default: update succeeds
-      mockQueryRunnerManager.delete.mockResolvedValue({ affected: 3, raw: {} }); // Default: delete old splits succeeds
-      mockQueryRunnerManager.save.mockResolvedValue([]); // Default: save new splits succeeds
+      });
+      mockQueryRunnerManager.delete.mockResolvedValue({ affected: 3, raw: {} });
+      mockQueryRunnerManager.save.mockResolvedValue([]);
       mockQueryRunnerManager.create.mockImplementation(
         (_entity: any, data: any) => ({ ...data })
-      ); // Simple create mock
-
-      // Note: mockExpenseRepository.findOneOrFail (for the final fetch) will be mocked
-      // within specific tests based on the expected final state.
+      );
     });
 
-    // --- Happy Path Tests ---
+    //* --- Happy Path Tests ---
 
     it("should update only the description without touching splits", async () => {
       const updateDto: UpdateExpenseDto = {
         description: "Updated Dinner Description",
       };
-      // Expected final state (only description and updatedAt change)
+
       const expectedFinalExpense = {
         ...mockExistingExpense,
         description: updateDto.description,
-        updatedAt: expect.any(Date), // Should be updated
+        updatedAt: expect.any(Date),
       };
-      // Mock the final fetch using the main repository instance
+
       mockExpenseRepository.findOneOrFail!.mockResolvedValue(
         expectedFinalExpense
       );
@@ -1005,14 +976,14 @@ describe("ExpensesService", () => {
         updateDto
       );
 
-      // Verify initial fetch within transaction
+      //? Verify initial fetch within transaction
       expect(mockQueryRunnerManager.findOne).toHaveBeenCalledWith(Expense, {
         where: { id: mockExpenseId },
         relations: ["group"],
       });
-      // Verify Authorization check passed (implicitly, as no ForbiddenException thrown)
+      //? Verify Authorization check passed (implicitly, as no ForbiddenException thrown)
 
-      // Verify NO split recalculation needed or performed
+      //? Verify NO split recalculation needed or performed
       expect(mockGroupsService.findGroupMembers).not.toHaveBeenCalled();
       expect(mockQueryRunnerManager.delete).not.toHaveBeenCalled();
       expect(mockQueryRunnerManager.create).not.toHaveBeenCalledWith(
@@ -1024,31 +995,31 @@ describe("ExpensesService", () => {
         expect.any(Object)
       );
 
-      // Verify update call within transaction
+      //? Verify update call within transaction
       expect(mockQueryRunnerManager.update).toHaveBeenCalledWith(
         Expense,
         mockExpenseId,
         { description: updateDto.description }
       );
-      expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1); // Only called once for the description
+      expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1);
 
-      // Verify transaction committed
+      //? Verify transaction committed
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
 
-      // Verify final fetch AFTER commit
+      //? Verify final fetch AFTER commit
       expect(mockExpenseRepository.findOneOrFail).toHaveBeenCalledWith({
         where: { id: mockExpenseId },
         relations: ["paidBy"],
       });
 
-      // Verify result
+      //? Verify result
       expect(result).toEqual(expectedFinalExpense);
-      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1); // Ensure runner is released
+      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
     it("should update amount and recalculate splits for original EQUAL type", async () => {
-      const updateDto: UpdateExpenseDto = { amount: 90.0 }; // New amount, type is still EQUAL
+      const updateDto: UpdateExpenseDto = { amount: 90.0 };
       const expectedFinalExpense = {
         ...mockExistingExpense,
         amount: updateDto.amount,
@@ -1065,16 +1036,16 @@ describe("ExpensesService", () => {
       );
 
       expect(mockQueryRunnerManager.findOne).toHaveBeenCalledTimes(1);
-      // Verify split recalculation WAS needed
+      //? Verify split recalculation WAS needed
       expect(mockGroupsService.findGroupMembers).toHaveBeenCalledWith(
         mockGroupId,
         mockRequestingUserId
       );
-      // Verify old splits deleted
+      //? Verify old splits deleted
       expect(mockQueryRunnerManager.delete).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockExpenseId,
       });
-      // Verify new splits created (90 / 3 members = 30 each)
+      //? Verify new splits created (90 / 3 members = 30 each)
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockExpenseId,
         owed_by_user_id: "user-payer-1",
@@ -1093,9 +1064,9 @@ describe("ExpensesService", () => {
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         ExpenseSplit,
         expect.any(Array)
-      ); // Saved the new splits
+      );
 
-      // Verify expense update call (only amount updated)
+      //? Verify expense update call (only amount updated)
       expect(mockQueryRunnerManager.update).toHaveBeenCalledWith(
         Expense,
         mockExpenseId,
@@ -1103,7 +1074,7 @@ describe("ExpensesService", () => {
       );
       expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1);
 
-      // Verify transaction, final fetch, result
+      //? Verify transaction, final fetch, result
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
       expect(mockExpenseRepository.findOneOrFail).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedFinalExpense);
@@ -1115,7 +1086,6 @@ describe("ExpensesService", () => {
         amount: 100.0,
         split_type: SplitType.EXACT,
         splits: [
-          // Valid splits for the new amount
           { user_id: "user-payer-1", amount: 40.0 },
           { user_id: "user-other-2", amount: 60.0 },
         ],
@@ -1137,7 +1107,7 @@ describe("ExpensesService", () => {
       );
 
       expect(mockQueryRunnerManager.findOne).toHaveBeenCalledTimes(1);
-      // Verify split recalculation/validation occurred
+      //? Verify split recalculation/validation occurred
       expect(mockGroupsService.findGroupMembers).toHaveBeenCalledWith(
         mockGroupId,
         mockRequestingUserId
@@ -1145,7 +1115,7 @@ describe("ExpensesService", () => {
       expect(mockQueryRunnerManager.delete).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockExpenseId,
       });
-      // Verify new EXACT splits created (only the two provided)
+      //? Verify new EXACT splits created (only the two provided)
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockExpenseId,
         owed_by_user_id: "user-payer-1",
@@ -1156,7 +1126,7 @@ describe("ExpensesService", () => {
         owed_by_user_id: "user-other-2",
         amount: 60.0,
       });
-      expect(mockQueryRunnerManager.create).toHaveBeenCalledTimes(2); // Only 2 splits created
+      expect(mockQueryRunnerManager.create).toHaveBeenCalledTimes(2);
       expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
         ExpenseSplit,
         expect.arrayContaining([
@@ -1170,7 +1140,7 @@ describe("ExpensesService", () => {
           }),
         ])
       );
-      // Verify expense update call (amount and type updated)
+      //? Verify expense update call (amount and type updated)
       expect(mockQueryRunnerManager.update).toHaveBeenCalledWith(
         Expense,
         mockExpenseId,
@@ -1178,23 +1148,18 @@ describe("ExpensesService", () => {
       );
       expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1);
 
-      // Verify transaction, final fetch, result
+      //? Verify transaction, final fetch, result
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
       expect(mockExpenseRepository.findOneOrFail).toHaveBeenCalledTimes(1);
       expect(result).toEqual(expectedFinalExpense);
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
-    // Add similar happy path tests for changing to PERCENTAGE and SHARE, and for updating splits of non-EQUAL types without changing amount/type.
-    // Example: Update PERCENTAGE splits
     it("should update PERCENTAGE splits without changing amount/type", async () => {
-      // Assume initial expense state was PERCENTAGE
       mockExistingExpense.split_type = SplitType.PERCENTAGE;
-      mockExistingExpense.amount = 100.0; // Keep amount same
+      mockExistingExpense.amount = 100.0;
       const updateDto: UpdateExpenseDto = {
-        // No amount or type change
         splits: [
-          // New valid percentage splits
           { user_id: "user-payer-1", percentage: 50 },
           { user_id: "user-other-2", percentage: 50 },
         ],
@@ -1202,7 +1167,7 @@ describe("ExpensesService", () => {
       const expectedFinalExpense = {
         ...mockExistingExpense,
         updatedAt: expect.any(Date),
-      }; // Only updatedAt changes essentially
+      };
       mockExpenseRepository.findOneOrFail!.mockResolvedValue(
         expectedFinalExpense
       );
@@ -1214,10 +1179,10 @@ describe("ExpensesService", () => {
       );
 
       expect(mockQueryRunnerManager.findOne).toHaveBeenCalledTimes(1);
-      // Verify split recalculation triggered because splits provided for non-equal type
+      //? Verify split recalculation triggered because splits provided for non-equal type
       expect(mockGroupsService.findGroupMembers).toHaveBeenCalledTimes(1);
       expect(mockQueryRunnerManager.delete).toHaveBeenCalledTimes(1);
-      // Verify new splits created based on percentage
+      //? Verify new splits created based on percentage
       expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(ExpenseSplit, {
         expense_id: mockExpenseId,
         owed_by_user_id: "user-payer-1",
@@ -1229,12 +1194,12 @@ describe("ExpensesService", () => {
         amount: 50.0,
       });
       expect(mockQueryRunnerManager.save).toHaveBeenCalledTimes(1);
-      // Verify expense update call (should be called with empty object as nothing basic changed)
+      //? Verify expense update call (should be called with empty object as nothing basic changed)
       expect(mockQueryRunnerManager.update).toHaveBeenCalledWith(
         Expense,
         mockExpenseId,
         {}
-      ); // Nothing basic to update
+      );
       expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1);
 
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
@@ -1243,10 +1208,10 @@ describe("ExpensesService", () => {
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
-    // --- Error Path Tests ---
+    //* --- Error Path Tests ---
 
     it("should throw NotFoundException if expense ID does not exist", async () => {
-      mockQueryRunnerManager.findOne.mockResolvedValue(null); // Simulate not found
+      mockQueryRunnerManager.findOne.mockResolvedValue(null);
       const updateDto: UpdateExpenseDto = { description: "Doesn't matter" };
 
       await expect(
@@ -1259,19 +1224,16 @@ describe("ExpensesService", () => {
         new NotFoundException(`Expense with ID "non-existent-id" not found.`)
       );
 
-      // Verify transaction started and rolled back
+      //? Verify transaction started and rolled back
       expect(mockQueryRunner.startTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
-      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1); // Finally block still runs
+      expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
     it("should throw ForbiddenException if requesting user is not the payer", async () => {
       const updateDto: UpdateExpenseDto = { description: "Try to update" };
-      const differentUserId = "user-imposter-99"; // Not mockRequestingUserId
-
-      // findOne succeeds, returns expense paid by mockRequestingUserId
-      // mockQueryRunnerManager.findOne.mockResolvedValue(mockExistingExpense); // Default setup handles this
+      const differentUserId = "user-imposter-99";
 
       await expect(
         service.updateExpense(mockExpenseId, differentUserId, updateDto)
@@ -1281,12 +1243,12 @@ describe("ExpensesService", () => {
         )
       );
 
-      // Verify fetch happened, but no updates/commits occurred
+      //? Verify fetch happened, but no updates/commits occurred
       expect(mockQueryRunnerManager.findOne).toHaveBeenCalledTimes(1);
       expect(mockQueryRunnerManager.update).not.toHaveBeenCalled();
       expect(mockQueryRunnerManager.delete).not.toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
-      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1); // Rolled back after auth check fail
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
@@ -1294,7 +1256,7 @@ describe("ExpensesService", () => {
       const updateDto: UpdateExpenseDto = {
         amount: 100.0,
         split_type: SplitType.EXACT,
-        splits: undefined, // Missing splits array
+        splits: undefined,
       };
 
       await expect(
@@ -1311,10 +1273,9 @@ describe("ExpensesService", () => {
 
     it("should throw BadRequestException for EXACT if provided splits sum does not match new amount", async () => {
       const updateDto: UpdateExpenseDto = {
-        amount: 100.0, // New amount is 100
+        amount: 100.0,
         split_type: SplitType.EXACT,
         splits: [
-          // Sum is 90.00 - Mismatch!
           { user_id: "user-payer-1", amount: 40.0 },
           { user_id: "user-other-2", amount: 50.0 },
         ],
@@ -1336,7 +1297,6 @@ describe("ExpensesService", () => {
         amount: 100.0,
         split_type: SplitType.PERCENTAGE,
         splits: [
-          // Sum is 101% - Invalid!
           { user_id: "user-payer-1", percentage: 50 },
           { user_id: "user-other-2", percentage: 51 },
         ],
@@ -1355,7 +1315,6 @@ describe("ExpensesService", () => {
         amount: 100.0,
         split_type: SplitType.SHARE,
         splits: [
-          // Total shares is 0 - Invalid!
           { user_id: "user-payer-1", shares: 0 },
           { user_id: "user-other-2", shares: 0 },
         ],
@@ -1377,7 +1336,7 @@ describe("ExpensesService", () => {
         split_type: SplitType.EXACT,
         splits: [
           { user_id: "user-payer-1", amount: 50.0 },
-          { user_id: "user-not-in-group-99", amount: 50.0 }, // Invalid user
+          { user_id: "user-not-in-group-99", amount: 50.0 },
         ],
       };
       await expect(
@@ -1386,64 +1345,56 @@ describe("ExpensesService", () => {
         new BadRequestException(
           `User user-not-in-group-99 in splits is not a member.`
         )
-      ); // Check exact error message if different
+      );
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
 
-    // Add tests for duplicate users in splits, invalid percentages/shares etc.
-
-    // --- Transaction Error Tests (Suppress console.error if needed) ---
+    //* --- Transaction Error Tests (Suppress console.error if needed) ---
     describe("Transaction Error Scenarios", () => {
-      // If using global suppression, these tests run normally.
-      // If using scoped suppression, add beforeEach/afterEach here.
-      // let originalConsoleError: any;
-      // beforeEach(() => { originalConsoleError = console.error; console.error = jest.fn(); });
-      // afterEach(() => { console.error = originalConsoleError; });
-
       it("should rollback and throw InternalServerErrorException if expense update fails", async () => {
         const updateDto: UpdateExpenseDto = { description: "Updated Desc" };
         const updateError = new Error("DB Update failed");
-        mockQueryRunnerManager.update.mockRejectedValue(updateError); // Simulate failure
+        mockQueryRunnerManager.update.mockRejectedValue(updateError);
 
         await expect(
           service.updateExpense(mockExpenseId, mockRequestingUserId, updateDto)
         ).rejects.toThrow(InternalServerErrorException);
 
-        // Verify state
+        //? Verify state
         expect(mockQueryRunnerManager.update).toHaveBeenCalledTimes(1);
         expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
-        // Optional: expect(console.error).toHaveBeenCalledWith(...) if suppression active
+
         expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
       });
 
       it("should rollback and throw InternalServerErrorException if old split deletion fails", async () => {
-        const updateDto: UpdateExpenseDto = { amount: 90.0 }; // Requi -> delete
+        const updateDto: UpdateExpenseDto = { amount: 90.0 };
         const deleteError = new Error("DB Delete failed");
-        mockQueryRunnerManager.delete.mockRejectedValue(deleteError); // Simulate failure
+        mockQueryRunnerManager.delete.mockRejectedValue(deleteError);
 
         await expect(
           service.updateExpense(mockExpenseId, mockRequestingUserId, updateDto)
         ).rejects.toThrow(InternalServerErrorException);
 
-        // Verify state
+        //? Verify state
         expect(mockQueryRunnerManager.delete).toHaveBeenCalledWith(
           ExpenseSplit,
           { expense_id: mockExpenseId }
         );
         expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
-        // Optional: expect(console.error).toHaveBeenCalledWith(...)
+
         expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
       });
 
       it("should rollback and throw InternalServerErrorException if new split saving fails", async () => {
-        const updateDto: UpdateExpenseDto = { amount: 90.0 }; // Requi -> save new
+        const updateDto: UpdateExpenseDto = { amount: 90.0 };
         const saveError = new Error("DB Save failed");
         mockQueryRunnerManager.save.mockImplementation(
           async (entityType: any) => {
-            if (entityType === ExpenseSplit) throw saveError; // Fail only when saving splits
+            if (entityType === ExpenseSplit) throw saveError;
             return [];
           }
         );
@@ -1452,20 +1403,20 @@ describe("ExpensesService", () => {
           service.updateExpense(mockExpenseId, mockRequestingUserId, updateDto)
         ).rejects.toThrow(InternalServerErrorException);
 
-        // Verify state
+        //? Verify state
         expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
           ExpenseSplit,
           expect.any(Array)
         );
         expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
-        // Optional: expect(console.error).toHaveBeenCalledWith(...)
+
         expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
       });
     });
   });
 
-  // --- Tests for findAllForGroup ---
+  //* --- Tests for findAllForGroup ---
   describe("findAllForGroup", () => {
     const groupId = "group-uuid-for-find";
     const requestingUserId = "user-uuid-member";
@@ -1500,46 +1451,45 @@ describe("ExpensesService", () => {
     ];
 
     it("should return expenses (including deleted) when user has access", async () => {
-      // Arrange
-      // Simulate successful access check (return value doesn't matter here)
+      //? Arrange
+
       mockGroupsService.findOneById!.mockResolvedValue({} as Group);
-      // Simulate repository returning mock expenses
+
       mockExpenseRepository.find!.mockResolvedValue(mockExpenses as Expense[]);
 
-      // Act
+      //? Act
       const result = await service.findAllForGroup(groupId, requestingUserId);
 
-      // Assert
-      // Check access was verified
+      //? Assert
+
       expect(mockGroupsService.findOneById).toHaveBeenCalledWith(
         groupId,
         requestingUserId
       );
-      // Check repository find was called with correct options
+
       expect(mockExpenseRepository.find).toHaveBeenCalledWith({
         where: { group_id: groupId },
-        withDeleted: true, // <<< Verify this option
-        relations: { paidBy: true }, // <<< Verify this option
+        withDeleted: true,
+        relations: { paidBy: true },
         order: {
-          // <<< Verify this option
           deletedAt: "ASC",
           transaction_date: "DESC",
           createdAt: "DESC",
         },
       });
-      // Check result matches mock data
+
       expect(result).toEqual(mockExpenses);
     });
 
     it("should return an empty array if no expenses exist", async () => {
-      // Arrange
+      //? Arrange
       mockGroupsService.findOneById!.mockResolvedValue({} as Group);
-      mockExpenseRepository.find!.mockResolvedValue([]); // Return empty array
+      mockExpenseRepository.find!.mockResolvedValue([]);
 
-      // Act
+      //? Act
       const result = await service.findAllForGroup(groupId, requestingUserId);
 
-      // Assert
+      //? Assert
       expect(mockGroupsService.findOneById).toHaveBeenCalledWith(
         groupId,
         requestingUserId
@@ -1550,60 +1500,59 @@ describe("ExpensesService", () => {
           withDeleted: true,
         })
       );
-      expect(result).toEqual([]); // Should return empty array
+      expect(result).toEqual([]);
     });
 
     it("should throw ForbiddenException if user cannot access group", async () => {
-      // Arrange
+      //? Arrange
       const forbiddenError = new ForbiddenException("Access Denied Test");
-      mockGroupsService.findOneById!.mockRejectedValue(forbiddenError); // Simulate access denied
+      mockGroupsService.findOneById!.mockRejectedValue(forbiddenError);
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
       ).rejects.toThrow(ForbiddenException);
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
-      ).rejects.toThrow("Access Denied Test"); // Check specific message if needed
+      ).rejects.toThrow("Access Denied Test");
 
-      // Ensure find was not called if access check failed
       expect(mockExpenseRepository.find).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException if group check throws NotFound", async () => {
-      // Arrange
+      //? Arrange
       const notFoundError = new NotFoundException("Group Not Found Test");
-      mockGroupsService.findOneById!.mockRejectedValue(notFoundError); // Simulate group not found
+      mockGroupsService.findOneById!.mockRejectedValue(notFoundError);
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
       ).rejects.toThrow(NotFoundException);
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
-      ).rejects.toThrow("Group Not Found Test"); // Check specific message if needed
+      ).rejects.toThrow("Group Not Found Test");
 
       expect(mockExpenseRepository.find).not.toHaveBeenCalled();
     });
 
     it("should throw InternalServerErrorException if group check throws unexpected error", async () => {
-      // Arrange
+      //? Arrange
       const unexpectedError = new Error("Some random DB error");
-      mockGroupsService.findOneById!.mockRejectedValue(unexpectedError); // Simulate unexpected error
+      mockGroupsService.findOneById!.mockRejectedValue(unexpectedError);
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
       ).rejects.toThrow(InternalServerErrorException);
       await expect(
         service.findAllForGroup(groupId, requestingUserId)
-      ).rejects.toThrow("Could not verify group access."); // Check specific message
+      ).rejects.toThrow("Could not verify group access.");
 
       expect(mockExpenseRepository.find).not.toHaveBeenCalled();
     });
   });
 
-  // --- Tests for softRemoveExpense ---
+  //* --- Tests for softRemoveExpense ---
   describe("softRemoveExpense", () => {
     const expenseId = "expense-uuid-to-delete";
     const payerUserId = "user-uuid-payer";
@@ -1613,23 +1562,22 @@ describe("ExpensesService", () => {
       id: expenseId,
       group_id: "group-uuid-1",
       paid_by_user_id: payerUserId,
-      // other fields not strictly needed for this method's logic based on code provided
     };
 
     it("should soft delete the expense if user is the payer", async () => {
-      // Arrange
-      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense); // Simulate finding the expense
+      //? Arrange
+      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense);
       mockExpenseRepository.softDelete!.mockResolvedValue({
         affected: 1,
         raw: [],
-      }); // Simulate successful soft delete
+      });
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.softRemoveExpense(expenseId, payerUserId)
-      ).resolves.toBeUndefined(); // Expect it to complete successfully (void return)
+      ).resolves.toBeUndefined();
 
-      // Verify mocks
+      //? Verify mocks
       expect(mockExpenseRepository.findOne).toHaveBeenCalledWith({
         where: { id: expenseId },
         select: ["id", "group_id", "paid_by_user_id"],
@@ -1640,27 +1588,28 @@ describe("ExpensesService", () => {
     });
 
     it("should throw ForbiddenException if user is not the payer", async () => {
-      // Arrange
-      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense); // Simulate finding the expense
+      //? Arrange
+      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense);
 
-      // Act & Assert
-      await expect(service.softRemoveExpense(expenseId, otherUserId)) // User ID doesn't match payer ID
-        .rejects.toThrow(ForbiddenException);
+      //? Act & Assert
+      await expect(
+        service.softRemoveExpense(expenseId, otherUserId)
+      ).rejects.toThrow(ForbiddenException);
       await expect(
         service.softRemoveExpense(expenseId, otherUserId)
       ).rejects.toThrow(
         "Only the user who paid for the expense can delete it."
       );
 
-      // Verify softDelete was not called
+      //? Verify softDelete was not called
       expect(mockExpenseRepository.softDelete).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException if expense is not found", async () => {
-      // Arrange
-      mockExpenseRepository.findOne!.mockResolvedValue(null); // Simulate expense not found
+      //? Arrange
+      mockExpenseRepository.findOne!.mockResolvedValue(null);
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.softRemoveExpense(expenseId, payerUserId)
       ).rejects.toThrow(NotFoundException);
@@ -1668,19 +1617,19 @@ describe("ExpensesService", () => {
         service.softRemoveExpense(expenseId, payerUserId)
       ).rejects.toThrow(`Expense with ID "${expenseId}" not found.`);
 
-      // Verify softDelete was not called
+      //? Verify softDelete was not called
       expect(mockExpenseRepository.softDelete).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundException if softDelete affects 0 rows", async () => {
-      // Arrange
-      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense); // Expense found initially
+      //? Arrange
+      mockExpenseRepository.findOne!.mockResolvedValue(mockExpense as Expense);
       mockExpenseRepository.softDelete!.mockResolvedValue({
         affected: 0,
         raw: [],
-      }); // Simulate softDelete failing to affect rows
+      });
 
-      // Act & Assert
+      //? Act & Assert
       await expect(
         service.softRemoveExpense(expenseId, payerUserId)
       ).rejects.toThrow(NotFoundException);
@@ -1690,7 +1639,7 @@ describe("ExpensesService", () => {
         `Expense with ID "${expenseId}" could not be soft-deleted.`
       );
 
-      // Verify softDelete *was* called
+      //? Verify softDelete *was* called
       expect(mockExpenseRepository.softDelete).toHaveBeenCalledWith({
         id: expenseId,
       });

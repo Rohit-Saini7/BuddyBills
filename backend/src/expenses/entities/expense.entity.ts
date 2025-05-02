@@ -1,4 +1,4 @@
-import { SplitType } from 'src/expenses/dto/expense-split.type';
+import { SplitType } from "src/expenses/dto/expense-split.type";
 import {
   Column,
   CreateDateColumn,
@@ -19,10 +19,10 @@ export class Expense {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: "uuid" }) // Explicit FK column
+  @Column({ type: "uuid" })
   group_id: string;
 
-  @Column({ type: "uuid" }) // Explicit FK column
+  @Column({ type: "uuid" })
   paid_by_user_id: string;
 
   @Column({ type: "varchar", length: 255 })
@@ -33,23 +33,21 @@ export class Expense {
     precision: 10,
     scale: 2,
     transformer: {
-      // Handle NUMERIC conversion
       to: (value: number) => value,
       from: (value: string) => parseFloat(value),
     },
   })
-  amount: number; // Use number in TS, TypeORM handles DB NUMERIC via transformer
+  amount: number;
 
-  @Column({ type: "date" }) // Use 'date' type
-  transaction_date: string; // TypeORM often maps DATE to string
+  @Column({ type: "date" })
+  transaction_date: string;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: SplitType,
-    default: SplitType.EQUAL, // Set default if desired
+    default: SplitType.EQUAL,
   })
   split_type: SplitType;
-
 
   @CreateDateColumn({ type: "timestamp with time zone" })
   createdAt: Date;
@@ -57,10 +55,10 @@ export class Expense {
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
 
-  @DeleteDateColumn({ type: 'timestamp with time zone', nullable: true })
+  @DeleteDateColumn({ type: "timestamp with time zone", nullable: true })
   deletedAt?: Date | null;
 
-  // --- Relationships ---
+  //* --- Relationships ---
 
   @ManyToOne(() => Group, (group) => group.expenses, {
     nullable: false,
@@ -72,7 +70,7 @@ export class Expense {
   @ManyToOne(() => User, (user) => user.paidExpenses, {
     nullable: false,
     onDelete: "RESTRICT",
-  }) // Match SQL ON DELETE
+  })
   @JoinColumn({ name: "paid_by_user_id" })
   paidBy: User;
 

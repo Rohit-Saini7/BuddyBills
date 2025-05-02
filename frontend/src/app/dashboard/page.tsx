@@ -5,17 +5,15 @@ import { apiClient } from "@/lib/apiClient";
 import { GroupResponseDto } from "@/types";
 import ProtectedLayout from "@components/ProtectedLayout";
 import Link from "next/link";
-import React, { useCallback, useState } from "react"; // Import useState
-import useSWR, { useSWRConfig } from "swr"; // Import useSWRConfig
+import React, { useCallback, useState } from "react";
+import useSWR, { useSWRConfig } from "swr";
 
-// Fetcher function remains the same
 const fetcher = (url: string) => apiClient.get<GroupResponseDto[]>(url);
 
 export default function DashboardPage() {
   const { isLoading: isAuthLoading } = useAuth();
-  const { mutate } = useSWRConfig(); // Get the mutate function from SWR config
+  const { mutate } = useSWRConfig();
 
-  // State for the new group form
   const [newGroupName, setNewGroupName] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [createGroupError, setCreateGroupError] = useState<string | null>(null);
@@ -39,9 +37,9 @@ export default function DashboardPage() {
 
   const isLoading = isAuthLoading || isGroupsLoading || deletedLoading;
 
-  // --- Handler for creating a new group ---
+  //* --- Handler for creating a new group ---
   const handleCreateGroup = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); // Prevent default form submission
+    event.preventDefault();
     if (!newGroupName.trim()) {
       setCreateGroupError("Group name cannot be empty.");
       return;
@@ -51,19 +49,14 @@ export default function DashboardPage() {
     setCreateGroupError(null);
 
     try {
-      // Use the apiClient to send POST request
       await apiClient.post<GroupResponseDto>("/groups", { name: newGroupName });
 
-      // Clear the form and state
       setNewGroupName("");
       setIsCreatingGroup(false);
 
-      // --- Trigger re-fetch of the groups list ---
-      // This tells SWR to revalidate the data associated with the '/groups' key
-      mutate("/groups");
+      //* --- Trigger re-fetch of the groups list ---
 
-      // Optionally show a success message (could use a state or toast library)
-      // alert('Group created successfully!');
+      mutate("/groups");
     } catch (error: any) {
       console.error("Failed to create group:", error);
       setCreateGroupError(
@@ -73,21 +66,16 @@ export default function DashboardPage() {
     }
   };
 
-  // --- Restore Group Handler ---
+  //* --- Restore Group Handler ---
   const handleRestoreGroup = useCallback(
     async (groupId: string) => {
       setRestoringGroupId(groupId);
       setRestoreError(null);
       try {
-        // Call the PATCH endpoint for restoring
         await apiClient.patch(`/groups/${groupId}/restore`, {});
 
-        // Mutate BOTH lists: remove from deleted, add back to active
         mutate(activeGroupsApiUrl);
         mutate(deletedGroupsApiUrl);
-
-        // Optional: Success feedback
-        // alert('Group restored!');
       } catch (error: any) {
         console.error("Failed to restore group:", error);
         setRestoreError(`Failed to restore group: ${error.message}`);
@@ -117,7 +105,7 @@ export default function DashboardPage() {
               placeholder="Enter group name"
               className="flex-grow p-2 border rounded"
               disabled={isCreatingGroup}
-              maxLength={100} // Match DTO validation
+              maxLength={100}
             />
             <button
               type="submit"

@@ -1,6 +1,4 @@
-import { Group } from "../../groups/entities/group.entity";
-import { Expense } from "../../expenses/entities/expense.entity";
-import { Payment } from "../../payments/entities/payment.entity";
+import { GroupMember } from "src/groups/entities/group-member.entity";
 import {
   Column,
   CreateDateColumn,
@@ -9,7 +7,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { GroupMember } from "src/groups/entities/group-member.entity";
+import { Expense } from "../../expenses/entities/expense.entity";
+import { Group } from "../../groups/entities/group.entity";
+import { Payment } from "../../payments/entities/payment.entity";
 
 @Entity("users")
 export class User {
@@ -34,25 +34,25 @@ export class User {
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
 
-  // --- Relationships ---
+  //* --- Relationships ---
 
-  // Groups created by this user
+  //? Groups created by this user
   @OneToMany(() => Group, (group) => group.createdBy)
   createdGroups: Group[];
 
-  // Memberships this user has in groups
+  //? Memberships this user has in groups
   @OneToMany(() => GroupMember, (member) => member.user)
   groupMemberships: GroupMember[];
 
-  // Expenses paid by this user
+  //? Expenses paid by this user
   @OneToMany(() => Expense, (expense) => expense.paidBy)
   paidExpenses: Expense[];
 
-  // Payments made by this user
+  //? Payments made by this user
   @OneToMany(() => Payment, (payment) => payment.paidBy)
   paymentsMade: Payment[];
 
-  // Payments received by this user
+  //? Payments received by this user
   @OneToMany(() => Payment, (payment) => payment.paidTo)
   paymentsReceived: Payment[];
 }

@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose } from "class-transformer";
 
 @Exclude()
 export class PaymentResponseDto {
@@ -15,20 +15,20 @@ export class PaymentResponseDto {
   paid_to_user_id: string;
 
   @Expose()
-  amount: number; // Already transformed
+  amount: number;
 
   @Expose()
-  payment_date: string; // String from entity
+  payment_date: string;
 
   @Expose()
   createdAt: Date;
 
-  // Optional: Expose related users
-  // @Expose()
-  // @Type(() => UserResponseDto)
-  // paidBy: UserResponseDto;
+  //[]: Optional: Expose related users
+  /* @Expose()
+  @Type(() => UserResponseDto)
+  paidBy: UserResponseDto;
 
-  // @Expose()
-  // @Type(() => UserResponseDto)
-  // paidTo: UserResponseDto;
+  @Expose()
+  @Type(() => UserResponseDto)
+  paidTo: UserResponseDto; */
 }

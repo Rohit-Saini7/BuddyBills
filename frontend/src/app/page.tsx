@@ -27,7 +27,7 @@ export default function Home() {
         console.error("Error fetching API status:", error);
         setApiStatus("Error connecting");
       });
-  }, [apiBaseUrl]); // Depend on apiBaseUrl
+  }, [apiBaseUrl]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">

@@ -14,7 +14,7 @@ interface EditExpenseModalProps {
   members: GroupMemberResponseDto[];
   loggedInUserId: string;
   onClose: () => void;
-  onSave: () => void; // Callback after successful save
+  onSave: () => void;
 }
 
 export default function EditExpenseModal({
@@ -24,40 +24,38 @@ export default function EditExpenseModal({
   onClose,
   onSave,
 }: EditExpenseModalProps) {
-  // --- Form State ---
+  //* --- Form State ---
   const [description, setDescription] = useState(expense.description);
-  const [amountStr, setAmountStr] = useState(expense.amount.toFixed(2)); // Use string for input
+  const [amountStr, setAmountStr] = useState(expense.amount.toFixed(2));
   const [transactionDate, setTransactionDate] = useState(
     expense.transaction_date
   );
-  const [splitType, setSplitType] = useState<SplitType>(
-    /* expense.split_type || */ SplitType.EQUAL
-  ); // Default or load from expense if backend returns it
+  const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL);
   const [splitInputs, setExactSplits] = useState<{ [userId: string]: string }>(
     {}
-  ); // Initialize empty or prefill if possible
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Pre-fill exact splits if editing an EXACT split expense ---
-  // Note: This part requires the backend GET /expenses/:id or GET /groups/:groupId/expenses
-  // to return the existing 'splits' data associated with the expense.
-  // If it doesn't return splits, we cannot reliably pre-fill exact amounts,
-  // and the user would have to re-enter them if they choose EXACT during edit.
-  // Let's assume for now we *don't* have the splits readily available on the `expense` prop.
-  // We will require re-entry if they switch to or edit with EXACT type.
-  // useEffect(() => {
-  //    if (expense.split_type === SplitType.EXACT && expense.splits) {
-  //        const initialSplits = expense.splits.reduce((acc, split) => {
-  //            acc[split.owed_by_user_id] = split.amount.toFixed(2);
-  //            return acc;
-  //        }, {} as { [userId: string]: string });
-  //        setExactSplits(initialSplits);
-  //    }
-  // }, [expense]); // Re-run if the expense prop changes
+  //* --- Pre-fill exact splits if editing an EXACT split expense ---
+  /* //[]: Note: This part requires the backend GET /expenses/:id or GET /groups/:groupId/expenses
+  to return the existing 'splits' data associated with the expense.
+  If it doesn't return splits, we cannot reliably pre-fill exact amounts,
+  and the user would have to re-enter them if they choose EXACT during edit.
+  Let's assume for now we *don't* have the splits readily available on the `expense` prop.
+  We will require re-entry if they switch to or edit with EXACT type. */
+  /* useEffect(() => {
+     if (expense.split_type === SplitType.EXACT && expense.splits) {
+         const initialSplits = expense.splits.reduce((acc, split) => {
+             acc[split.owed_by_user_id] = split.amount.toFixed(2);
+             return acc;
+         }, {} as { [userId: string]: string });
+         setExactSplits(initialSplits);
+     }
+  }, [expense]); */
 
-  // --- Calculated values for EXACT split validation ---
+  //* --- Calculated values for EXACT split validation ---
   const currentExactSplitTotal = useMemo(() => {
     return Object.values(splitInputs).reduce((sum, amountStr) => {
       const amount = parseFloat(amountStr);
@@ -73,14 +71,14 @@ export default function EditExpenseModal({
     [totalExpenseAmountNumber, currentExactSplitTotal]
   );
 
-  // --- Handler for Exact Split Input Changes ---
+  //* --- Handler for Exact Split Input Changes ---
   const handleSplitInputChange = (userId: string, value: string) => {
     if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
       setExactSplits((prev) => ({ ...prev, [userId]: value }));
     }
   };
 
-  // --- Helper calculations for validation display ---
+  //* --- Helper calculations for validation display ---
   const percentageTotal = useMemo(() => {
     if (splitType !== SplitType.PERCENTAGE) return 0;
     return Object.values(splitInputs).reduce((sum, percentStr) => {
@@ -97,7 +95,6 @@ export default function EditExpenseModal({
     }, 0);
   }, [splitInputs, splitType]);
 
-  // Add overall validation status for submit button
   const isValid = useMemo(() => {
     const amountNumber = parseFloat(amountStr);
     if (
@@ -109,9 +106,9 @@ export default function EditExpenseModal({
       return false;
     if (splitType === SplitType.EXACT) return Math.abs(remainingAmount) < 0.015;
     if (splitType === SplitType.PERCENTAGE)
-      return Math.abs(percentageTotal - 100) < 0.01; // Use stricter tolerance for %?
+      return Math.abs(percentageTotal - 100) < 0.01;
     if (splitType === SplitType.SHARE) return sharesTotal > 0;
-    return true; // For EQUAL
+    return true;
   }, [
     description,
     amountStr,
@@ -122,7 +119,7 @@ export default function EditExpenseModal({
     sharesTotal,
   ]);
 
-  // --- Handler for Form Submission ---
+  //* --- Handler for Form Submission ---
   const handleUpdateExpense = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -131,14 +128,12 @@ export default function EditExpenseModal({
     const amountNumber = parseFloat(amountStr);
 
     if (!isValid) {
-      // Use the memoized validation check
       setError("Please check form inputs and split allocations.");
       return;
     }
 
-    // --- Construct Payload (only include changed fields or all for PATCH) ---
+    //* --- Construct Payload (only include changed fields or all for PATCH) ---
     const payload: UpdateExpenseDto = {
-      // Always include fields that might need validation together
       amount: amountNumber,
       split_type: splitType,
       splits: [],
@@ -149,9 +144,8 @@ export default function EditExpenseModal({
 
     const memberIds = members.map((m) => m.user.id);
 
-    // --- Validation and Payload construction for EXACT ---
+    //* --- Validation and Payload construction for EXACT ---
     if (splitType === SplitType.EQUAL) {
-      // No 'splits' needed in payload, backend handles it
       delete payload.splits;
     } else if (splitType === SplitType.EXACT) {
       payload.splits = Object.entries(splitInputs)
@@ -161,7 +155,7 @@ export default function EditExpenseModal({
         }))
         .filter(
           (split) => split.amount > 0.005 && memberIds.includes(split.user_id)
-        ); // Ensure user is still member
+        );
 
       if (payload.splits.length === 0) {
         setError(`Exact splits must involve at least one positive amount.`);
@@ -208,7 +202,7 @@ export default function EditExpenseModal({
     setIsLoading(true);
     try {
       await apiClient.patch(`/expenses/${expense.id}`, payload);
-      onSave(); // Call the onSave callback (triggers mutate & closes modal)
+      onSave();
     } catch (error: any) {
       console.error("Failed to update expense:", error);
       setError(error.message || "Failed to update expense.");
@@ -218,7 +212,6 @@ export default function EditExpenseModal({
   };
 
   return (
-    // Simple Modal Structure (replace with your preferred modal library/styling)
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Edit Expense</h2>
@@ -426,7 +419,7 @@ export default function EditExpenseModal({
                       }
                       placeholder="0"
                       step="0.1"
-                      min="0" // Allow fractional shares? Or just integers? Adjust step/validation if needed
+                      min="0"
                       className="p-1 border rounded w-20 text-right"
                       disabled={isLoading}
                     />
@@ -445,7 +438,7 @@ export default function EditExpenseModal({
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4">
             <button
-              type="button" // Important: type="button" to prevent form submission
+              type="button"
               onClick={onClose}
               disabled={isLoading}
               className="p-2 px-4 border rounded text-gray-700 hover:bg-gray-100"
@@ -458,7 +451,7 @@ export default function EditExpenseModal({
                 isLoading ||
                 (splitType === SplitType.EXACT &&
                   Math.abs(remainingAmount) > 0.015)
-              } // Disable if loading or exact amounts don't match
+              }
               className="p-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
             >
               {isLoading ? "Saving..." : "Save Changes"}

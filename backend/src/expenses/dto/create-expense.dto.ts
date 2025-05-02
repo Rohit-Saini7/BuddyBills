@@ -26,18 +26,14 @@ export class CreateExpenseDto {
   )
   @IsPositive({ message: "Amount must be positive" })
   @IsNotEmpty()
-  amount: number; // Matches the 'number' type used in the entity transformer
+  amount: number;
 
   @IsDateString(
     {},
     { message: "Transaction date must be a valid date string (YYYY-MM-DD)" }
   )
   @IsNotEmpty()
-  transaction_date: string; // Matches the 'string' type from the entity
-
-  // Note: group_id will typically come from URL param (e.g., POST /api/groups/:groupId/expenses)
-  // Note: paid_by_user_id will typically come from the authenticated user (`req.user.userId`)
-  // Note: For MVP equal split, we don't need participants list in DTO
+  transaction_date: string;
 
   @IsEnum(SplitType)
   @IsNotEmpty()

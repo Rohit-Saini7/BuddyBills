@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/apiClient";
 import {
   BalanceResponseDto,
@@ -21,12 +21,12 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
-// --- Fetchers ---
+//* --- Fetchers ---
 const fetchGroup = (url: string) => apiClient.get<GroupResponseDto>(url);
 const fetchMembers = (url: string) =>
   apiClient.get<GroupMemberResponseDto[]>(url);
-const fetchExpenses = (url: string) => apiClient.get<ExpenseResponseDto[]>(url); // Fetcher for expenses
-const fetchBalances = (url: string) => apiClient.get<BalanceResponseDto[]>(url); // Fetcher for balances
+const fetchExpenses = (url: string) => apiClient.get<ExpenseResponseDto[]>(url);
+const fetchBalances = (url: string) => apiClient.get<BalanceResponseDto[]>(url);
 
 export default function GroupDetailPage() {
   const params = useParams();
@@ -35,30 +35,30 @@ export default function GroupDetailPage() {
   const { user: loggedInUser, isLoading: isAuthLoading } = useAuth();
   const { mutate } = useSWRConfig();
 
-  // --- State for Add Expense Form ---
+  //* --- State for Add Expense Form ---
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDate, setExpenseDate] = useState(
     new Date().toISOString().split("T")[0]
-  ); // Default to today YYYY-MM-DD
+  );
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
 
-  // --- NEW State for Split Logic ---
-  const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL); // Default to EQUAL
-  // Store exact amounts as strings mapped by userId for easier input handling
+  //* --- NEW State for Split Logic ---
+  const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL);
+
   const [splitInputs, setSplitInputs] = useState<{ [userId: string]: string }>(
     {}
   );
 
-  // --- State for Add Member Form (from previous step) ---
+  //* --- State for Add Member Form (from previous step) ---
   const [memberEmail, setMemberEmail] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
 
-  // --- State for Record Payment Form ---
+  //* --- State for Record Payment Form ---
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paidToUserId, setPaidToUserId] = useState(""); // Store the ID of the selected payee
+  const [paidToUserId, setPaidToUserId] = useState("");
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -69,20 +69,20 @@ export default function GroupDetailPage() {
 
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
     null
-  ); // Track which expense is being deleted
+  );
   const [deleteExpenseError, setDeleteExpenseError] = useState<string | null>(
     null
   );
 
   const [editingExpense, setEditingExpense] =
-    useState<ExpenseResponseDto | null>(null); // Store the expense being edited
+    useState<ExpenseResponseDto | null>(null);
 
-  // --- NEW State for Editing Group Name ---
+  //* --- NEW State for Editing Group Name ---
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedGroupName, setEditedGroupName] = useState("");
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [isSavingName, setIsSavingName] = useState(false);
-  // Add state for remove/leave actions
+
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [removeMemberError, setRemoveMemberError] = useState<string | null>(
     null
@@ -93,7 +93,7 @@ export default function GroupDetailPage() {
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [deleteGroupError, setDeleteGroupError] = useState<string | null>(null);
 
-  // --- SWR Hooks ---
+  //* --- SWR Hooks ---
   const allGroupsApiUrl = "/groups";
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
   const {
@@ -123,7 +123,7 @@ export default function GroupDetailPage() {
     isLoading: balancesLoading,
   } = useSWR(balancesApiUrl, fetchBalances);
 
-  // --- Calculated value for exact split validation ---
+  //* --- Calculated value for exact split validation ---
   const currentExactSplitTotal = Object.values(splitInputs).reduce(
     (sum, amountStr) => {
       const amount = parseFloat(amountStr);
@@ -137,7 +137,7 @@ export default function GroupDetailPage() {
     ? totalExpenseAmountNumber - currentExactSplitTotal
     : 0;
 
-  // --- Helper calculations for validation display ---
+  //* --- Helper calculations for validation display ---
   const percentageTotal = useMemo(() => {
     if (splitType !== SplitType.PERCENTAGE) return 0;
     return Object.values(splitInputs).reduce((sum, percentStr) => {
@@ -154,7 +154,6 @@ export default function GroupDetailPage() {
     }, 0);
   }, [splitInputs, splitType]);
 
-  // Add overall validation status for submit button
   const isValid = useMemo(() => {
     const amountNumber = parseFloat(expenseAmount);
     if (
@@ -166,9 +165,9 @@ export default function GroupDetailPage() {
       return false;
     if (splitType === SplitType.EXACT) return Math.abs(remainingAmount) < 0.015;
     if (splitType === SplitType.PERCENTAGE)
-      return Math.abs(percentageTotal - 100) < 0.01; // Use stricter tolerance for %?
+      return Math.abs(percentageTotal - 100) < 0.01;
     if (splitType === SplitType.SHARE) return sharesTotal > 0;
-    return true; // For EQUAL
+    return true;
   }, [
     expenseDescription,
     expenseAmount,
@@ -181,27 +180,23 @@ export default function GroupDetailPage() {
 
   const isSettledUp = useMemo(() => {
     if (!balances || balances.length === 0) {
-      // If no balances (e.g., only one member) or still loading, consider it settled for UI purposes
-      // Or handle loading state separately if preferred
       return true;
     }
-    const tolerance = 0.01; // Use same tolerance as backend check
+    const tolerance = 0.01;
     return balances.every(
       (balance) => Math.abs(balance.netBalance) < tolerance
     );
   }, [balances]);
 
-  // --- Handlers ---
+  //* --- Handlers ---
 
-  // Add Member Handler (from previous step)
   const handleAddMember = async (event: React.FormEvent<HTMLFormElement>) => {
-    // ... (keep existing handleAddMember logic) ...
     event.preventDefault();
     if (!memberEmail.trim()) {
       setAddMemberError("Email cannot be empty.");
       return;
     }
-    if (!groupId) return; // Should not happen if page loads
+    if (!groupId) return;
     setIsAddingMember(true);
     setAddMemberError(null);
     try {
@@ -212,7 +207,7 @@ export default function GroupDetailPage() {
       setMemberEmail("");
       setIsAddingMember(false);
 
-      mutate(membersApiUrl); // Revalidate members
+      mutate(membersApiUrl);
     } catch (error: any) {
       setAddMemberError(error.message || "Failed to add member.");
     } finally {
@@ -220,14 +215,12 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Add Expense Handler
   const handleAddExpense = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const amountNumber = parseFloat(expenseAmount);
-    setAddExpenseError(null); // Clear previous errors
+    setAddExpenseError(null);
 
     if (!isValid) {
-      // Use the memoized validation check
       setAddExpenseError("Please check form inputs and split allocations.");
       return;
     }
@@ -243,9 +236,8 @@ export default function GroupDetailPage() {
 
     const memberIds = members.map((m) => m.user.id);
 
-    // --- Construct splits array based on type ---
+    //* --- Construct splits array based on type ---
     if (splitType === SplitType.EQUAL) {
-      // No 'splits' needed in payload, backend handles it
       delete expensePayload.splits;
     } else if (splitType === SplitType.EXACT) {
       expensePayload.splits = Object.entries(splitInputs)
@@ -255,7 +247,7 @@ export default function GroupDetailPage() {
         }))
         .filter(
           (split) => split.amount > 0.005 && memberIds.includes(split.user_id)
-        ); // Ensure user is still member
+        );
 
       if (expensePayload.splits.length === 0) {
         setAddExpenseError(
@@ -306,21 +298,18 @@ export default function GroupDetailPage() {
     setIsAddingExpense(true);
 
     try {
-      // Send the payload (includes split_type and potentially splits)
       await apiClient.post<ExpenseResponseDto>(
         `/groups/${groupId}/expenses`,
         expensePayload
       );
 
-      // Clear form on success
       setExpenseDescription("");
       setExpenseAmount("");
       setExpenseDate(new Date().toISOString().split("T")[0]);
-      setSplitType(SplitType.EQUAL); // Reset split type
-      setSplitInputs({}); // Reset exact splits
+      setSplitType(SplitType.EQUAL);
+      setSplitInputs({});
       setAddExpenseError(null);
 
-      // Revalidate expenses AND balances
       mutate(expensesApiUrl);
       mutate(balancesApiUrl);
     } catch (error: any) {
@@ -331,11 +320,8 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Exact Split Input Changes Handler
   const handleSplitInputChange = (userId: string, value: string) => {
-    // Allow empty string, numbers, and decimals (adjust regex if needed for shares vs percentage)
     if (value === "" || /^\d*\.?\d{0,4}$/.test(value)) {
-      // Allow more decimals potentially
       setSplitInputs((prev) => ({
         ...prev,
         [userId]: value,
@@ -343,7 +329,6 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Record Payment Handler
   const handleRecordPayment = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -358,7 +343,7 @@ export default function GroupDetailPage() {
       setRecordPaymentError("Please enter a valid positive amount.");
       return;
     }
-    if (!groupId || !loggedInUser) return; // Should not happen if page loads correctly
+    if (!groupId || !loggedInUser) return;
 
     setIsRecordingPayment(true);
     setRecordPaymentError(null);
@@ -366,7 +351,7 @@ export default function GroupDetailPage() {
     const paymentData: CreatePaymentDto = {
       amount: amountNumber,
       paid_to_user_id: paidToUserId,
-      payment_date: paymentDate, // Send the selected date
+      payment_date: paymentDate,
     };
 
     try {
@@ -375,14 +360,12 @@ export default function GroupDetailPage() {
         paymentData
       );
 
-      // Clear form on success
       setPaymentAmount("");
       setPaidToUserId("");
       setPaymentDate(new Date().toISOString().split("T")[0]);
 
-      // --- IMPORTANT: Revalidate balances ---
+      //* --- IMPORTANT: Revalidate balances ---
       mutate(balancesApiUrl);
-      // Optionally mutate a payments list if you display one: mutate(`/groups/${groupId}/payments`);
     } catch (error: any) {
       console.error("Failed to record payment:", error);
       setRecordPaymentError(error.message || "Failed to record payment.");
@@ -391,10 +374,8 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Deleting Expense Handler
   const handleDeleteExpense = useCallback(
     async (expenseId: string) => {
-      // Simple confirmation dialog
       if (
         !window.confirm(
           "Are you sure you want to delete this expense? This action cannot be undone."
@@ -403,29 +384,24 @@ export default function GroupDetailPage() {
         return;
       }
 
-      setDeletingExpenseId(expenseId); // Indicate loading for this specific expense
+      setDeletingExpenseId(expenseId);
       setDeleteExpenseError(null);
 
       try {
         await apiClient.delete(`/expenses/${expenseId}`);
 
-        // IMPORTANT: Mutate (re-fetch) both expenses AND balances
         mutate(expensesApiUrl);
         mutate(balancesApiUrl);
-
-        // Optional: Show success feedback (e.g., toast notification)
       } catch (error: any) {
         console.error("Failed to delete expense:", error);
         setDeleteExpenseError(`Failed to delete expense: ${error.message}`);
-        // Optional: Show error feedback (e.g., toast notification)
       } finally {
-        setDeletingExpenseId(null); // Stop loading indicator for this expense
+        setDeletingExpenseId(null);
       }
     },
     [groupId, mutate, expensesApiUrl, balancesApiUrl]
   );
 
-  // Editing Group Name Handlers
   const handleEditNameClick = () => {
     if (group) {
       setEditedGroupName(group.name);
@@ -434,9 +410,9 @@ export default function GroupDetailPage() {
     }
   };
 
-  // --- NEW Handler for Deleting Group ---
+  //* --- NEW Handler for Deleting Group ---
   const handleDeleteGroup = useCallback(async () => {
-    if (!group) return; // Should have group data if button is visible
+    if (!group) return;
 
     if (
       !window.confirm(
@@ -452,21 +428,17 @@ export default function GroupDetailPage() {
     try {
       await apiClient.delete(`/groups/${group.id}`);
 
-      // Show feedback
-      alert(`Group "${group.name}" deleted successfully.`); // Replace with toast later
+      alert(`Group "${group.name}" deleted successfully.`);
 
-      // Mutate the main list of groups so it disappears from the dashboard
       mutate(allGroupsApiUrl);
 
-      // Redirect user away from the now-deleted group page
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Failed to delete group:", error);
       setDeleteGroupError(error.message || "Could not delete group.");
-      // Don't reset loading state here so button stays disabled on error? Or reset? Let's reset.
+
       setIsDeletingGroup(false);
     }
-    // No finally needed if redirecting on success
   }, [group, mutate, allGroupsApiUrl, router]);
 
   const handleCancelEditName = () => {
@@ -495,10 +467,9 @@ export default function GroupDetailPage() {
         updateData
       );
 
-      // Mutate the group data to reflect the change immediately
-      mutate(groupApiUrl); // Re-fetches /api/groups/:groupId
+      mutate(groupApiUrl);
 
-      setIsEditingName(false); // Exit editing mode
+      setIsEditingName(false);
     } catch (error: any) {
       console.error("Failed to update group name:", error);
       setEditNameError(error.message || "Could not update group name.");
@@ -507,7 +478,6 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Removing a Member Handler
   const handleRemoveMember = useCallback(
     async (memberUserIdToRemove: string) => {
       if (
@@ -519,14 +489,14 @@ export default function GroupDetailPage() {
       }
       if (!groupId) return;
 
-      setRemovingMemberId(memberUserIdToRemove); // Use user ID to track loading state
+      setRemovingMemberId(memberUserIdToRemove);
       setRemoveMemberError(null);
 
       try {
         await apiClient.delete(
           `/groups/${groupId}/members/${memberUserIdToRemove}`
         );
-        // Mutate members list AND balances list
+
         mutate(membersApiUrl);
         mutate(balancesApiUrl);
       } catch (error: any) {
@@ -539,7 +509,6 @@ export default function GroupDetailPage() {
     [groupId, mutate, membersApiUrl, balancesApiUrl]
   );
 
-  // Leaving the Group Handler
   const handleLeaveGroup = useCallback(async () => {
     if (
       !window.confirm(
@@ -555,17 +524,16 @@ export default function GroupDetailPage() {
 
     try {
       await apiClient.delete(`/groups/${groupId}/members/me`);
-      // Mutate the main groups list SWR key (if you have one, e.g., '/groups')
-      mutate("/groups"); // Tells SWR controlling the dashboard list to refetch
-      // Redirect user away from the group they just left
+
+      mutate("/groups");
+
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Failed to leave group:", error);
       setLeaveGroupError(`Failed to leave group: ${error.message}`);
-      // Don't clear loading state on error, let user retry or navigate away
-      setIsLeavingGroup(false); // Or maybe clear loading state here too
+
+      setIsLeavingGroup(false);
     }
-    // No finally needed if navigating away on success
   }, [groupId, mutate, router]);
 
   const isLoading = groupLoading || isAuthLoading;
@@ -596,7 +564,7 @@ export default function GroupDetailPage() {
                 <h3 className="text-lg font-semibold text-red-800 mb-2">
                   Danger Zone
                 </h3>
-                {!isSettledUp && ( // Show warning if not settled
+                {!isSettledUp && (
                   <p className="text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 p-2 rounded mb-3">
                     Cannot delete group: Balances are not fully settled. Ask
                     members to record payments first.
@@ -622,7 +590,7 @@ export default function GroupDetailPage() {
             )}
             <div className="flex items-center space-x-3 mb-4">
               {isEditingName ? (
-                // --- Editing State ---
+                //* --- Editing State ---
                 <>
                   <input
                     type="text"
@@ -631,7 +599,7 @@ export default function GroupDetailPage() {
                     className="flex-grow text-2xl font-bold p-1 border border-blue-300 rounded"
                     maxLength={100}
                     disabled={isSavingName}
-                    autoFocus // Focus input when it appears
+                    autoFocus
                   />
                   <button
                     onClick={handleSaveGroupName}
@@ -699,10 +667,10 @@ export default function GroupDetailPage() {
                     balances.map((balance) => {
                       const isCurrentUser =
                         balance.user.id === loggedInUser?.id;
-                      const balanceAmount = Math.abs(balance.netBalance); // Absolute value for display
-                      const isOwed = balance.netBalance > 0.005; // Is owed money (positive balance, handle floating point noise)
-                      const owesMoney = balance.netBalance < -0.005; // Owes money (negative balance)
-                      const isSettled = !isOwed && !owesMoney; // Essentially zero balance
+                      const balanceAmount = Math.abs(balance.netBalance);
+                      const isOwed = balance.netBalance > 0.005;
+                      const owesMoney = balance.netBalance < -0.005;
+                      const isSettled = !isOwed && !owesMoney;
 
                       let balanceText = "";
                       let textColor = "text-gray-600";
@@ -1089,7 +1057,7 @@ export default function GroupDetailPage() {
                             }
                             placeholder="0"
                             step="0.1"
-                            min="0" // Allow fractional shares? Or just integers? Adjust step/validation if needed
+                            min="0"
                             className="p-1 border rounded w-20 text-right"
                             disabled={isAddingExpense}
                           />
@@ -1179,9 +1147,9 @@ export default function GroupDetailPage() {
 
                           {/* --- Edit Button --- */}
                           {!expense.deletedAt &&
-                            expense.paidBy?.id === loggedInUser?.id && ( // Condition: Not deleted AND current user is payer
+                            expense.paidBy?.id === loggedInUser?.id && (
                               <button
-                                onClick={() => setEditingExpense(expense)} // Set the expense to edit on click
+                                onClick={() => setEditingExpense(expense)}
                                 className="p-1 text-blue-500 rounded hover:bg-blue-100"
                                 title="Edit Expense"
                                 aria-label={`Edit expense: ${expense.description}`}
@@ -1207,8 +1175,8 @@ export default function GroupDetailPage() {
                             expense.paidBy?.id === loggedInUser?.id && (
                               <button
                                 onClick={() => handleDeleteExpense(expense.id)}
-                                disabled={deletingExpenseId === expense.id} // Disable only the button being clicked
-                                className={`p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 ${deletingExpenseId === expense.id ? "animate-pulse" : ""}`} // Basic loading indicator via pulse
+                                disabled={deletingExpenseId === expense.id}
+                                className={`p-1 text-red-500 rounded hover:bg-red-100 disabled:opacity-50 ${deletingExpenseId === expense.id ? "animate-pulse" : ""}`}
                                 title="Delete Expense"
                                 aria-label={`Delete expense: ${expense.description}`}
                               >
@@ -1244,10 +1212,10 @@ export default function GroupDetailPage() {
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold">Members</h2>
                 {/* --- Leave Group Button --- */}
-                {loggedInUser?.id !== group.created_by_user_id && // Show only if NOT creator
+                {loggedInUser?.id !== group.created_by_user_id &&
                   members?.find(
                     (m) => m.user.id === loggedInUser?.id && !m.deletedAt
-                  ) && ( // Show only if active member
+                  ) && (
                     <button
                       onClick={handleLeaveGroup}
                       disabled={isLeavingGroup}
@@ -1273,17 +1241,17 @@ export default function GroupDetailPage() {
               {!membersLoading && !membersError && members && (
                 <ul className="space-y-2 mb-4">
                   {members.length === 0 ? (
-                    <p>No members found.</p> // Should not happen if creator is added
+                    <p>No members found.</p>
                   ) : (
                     members.map((member) => {
                       const isCreator =
                         member.user.id === group.created_by_user_id;
                       const isCurrentUser = member.user.id === loggedInUser?.id;
-                      const isInactive = !!member.deletedAt; // Check if soft-deleted
+                      const isInactive = !!member.deletedAt;
                       const canRemove =
                         loggedInUser?.id === group.created_by_user_id &&
                         !isCreator &&
-                        !isInactive; // Creator can remove others who are active
+                        !isInactive;
 
                       let statusText = "";
                       if (isInactive) {
@@ -1383,7 +1351,7 @@ export default function GroupDetailPage() {
                                     strokeLinejoin="round"
                                     d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
                                   />
-                                </svg> // Minus circle icon
+                                </svg>
                               )}
                             </button>
                           )}
@@ -1425,14 +1393,13 @@ export default function GroupDetailPage() {
         {editingExpense && (
           <EditExpenseModal
             expense={editingExpense}
-            members={members || []} // Pass members list
-            loggedInUserId={loggedInUser?.id || ""} // Pass current user ID
-            onClose={() => setEditingExpense(null)} // Function to close modal
+            members={members || []}
+            loggedInUserId={loggedInUser?.id || ""}
+            onClose={() => setEditingExpense(null)}
             onSave={() => {
-              // Function to run after successful save
-              mutate(expensesApiUrl); // Revalidate expenses
-              mutate(balancesApiUrl); // Revalidate balances
-              setEditingExpense(null); // Close modal
+              mutate(expensesApiUrl);
+              mutate(balancesApiUrl);
+              setEditingExpense(null);
             }}
           />
         )}

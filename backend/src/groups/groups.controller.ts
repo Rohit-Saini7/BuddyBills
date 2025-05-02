@@ -10,8 +10,8 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Req, // Add Patch, Delete
-  UseGuards, // Add HttpCode, HttpStatus
+  Req,
+  UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { Request } from "express";
@@ -23,19 +23,19 @@ import { CreatePaymentDto } from "src/payments/dto/create-payment.dto";
 import { PaymentResponseDto } from "src/payments/dto/payment-response.dto";
 import { PaymentsService } from "src/payments/payments.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { AddGroupMemberDto } from "./dto/add-group-member.dto"; // Import AddMember DTO
+import { AddGroupMemberDto } from "./dto/add-group-member.dto";
 import { CreateGroupDto } from "./dto/create-group.dto";
 import { GroupMemberResponseDto } from "./dto/group-member-response.dto";
-import { GroupResponseDto } from "./dto/group-response.dto"; // Import Response DTOs
-import { UpdateGroupDto } from "./dto/update-group.dto"; // Import Update DTO
+import { GroupResponseDto } from "./dto/group-response.dto";
+import { UpdateGroupDto } from "./dto/update-group.dto";
 import { GroupsService } from "./groups.service";
 
 interface AuthenticatedRequest extends Request {
-  user: { userId: string; email: string /* other JWT payload fields */ };
+  user: { userId: string; email: string };
 }
 
-@UseGuards(JwtAuthGuard) // Apply guard to all routes
-@UseInterceptors(ClassSerializerInterceptor) // Ensure responses are serialized correctly
+@UseGuards(JwtAuthGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller("groups")
 export class GroupsController {
   constructor(
@@ -65,9 +65,8 @@ export class GroupsController {
     @Param("id", ParseUUIDPipe) id: string,
     @Req() req: AuthenticatedRequest
   ): Promise<GroupResponseDto> {
-    // Return single GroupResponseDto
     const userId = req.user.userId;
-    return this.groupsService.findOneById(id, userId); // Interceptor transforms entity
+    return this.groupsService.findOneById(id, userId);
   }
 
   @Patch(":id")
@@ -79,14 +78,13 @@ export class GroupsController {
     return this.groupsService.update(id, updateGroupDto, req.user.userId);
   }
 
-  // --- Group Members ---
-  @Post(":groupId/members") // Route to add member
+  //* --- Group Members ---
+  @Post(":groupId/members")
   async addMember(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Body() addGroupMemberDto: AddGroupMemberDto,
     @Req() req: AuthenticatedRequest
   ): Promise<GroupMemberResponseDto> {
-    // Return the membership details
     return this.groupsService.addMember(
       groupId,
       addGroupMemberDto,
@@ -94,70 +92,71 @@ export class GroupsController {
     );
   }
 
-  @Get(":groupId/members") // Route to list members
+  @Get(":groupId/members")
   async findMembers(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Req() req: AuthenticatedRequest
   ): Promise<GroupMemberResponseDto[]> {
-    // Return list of members
     return this.groupsService.findGroupMembers(groupId, req.user.userId);
   }
 
-  // --- Method to DELETE a Group ---
-  @Delete(':id') // DELETE /api/groups/:id
-  @HttpCode(HttpStatus.NO_CONTENT) // Return 204 No Content on success
-  async deleteGroup( // Changed method name for clarity
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: AuthenticatedRequest,
+  //* --- Method to DELETE a Group ---
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteGroup(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest
   ): Promise<void> {
     const requestingUserId = req.user.userId;
-    await this.groupsService.deleteGroup(id, requestingUserId); // Call the specific deleteGroup service method
+    await this.groupsService.deleteGroup(id, requestingUserId);
   }
 
-  // --- Method to RESTORE a Soft-Deleted Group ---
-  @Patch(':id/restore') // PATCH /api/groups/:id/restore
-  @HttpCode(HttpStatus.NO_CONTENT) // Or OK if returning the restored group
+  //* --- Method to RESTORE a Soft-Deleted Group ---
+  @Patch(":id/restore")
+  @HttpCode(HttpStatus.NO_CONTENT)
   async restoreGroup(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: AuthenticatedRequest,
-  ): Promise<void> { // Return void for 204 response
+    @Param("id", ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest
+  ): Promise<void> {
     const requestingUserId = req.user.userId;
     await this.groupsService.restoreGroup(id, requestingUserId);
-    // No content returned on success
   }
 
-  // --- DELETE /:groupId/members/me ---
-  @Delete(':groupId/members/me')
+  //* --- DELETE /:groupId/members/me ---
+  @Delete(":groupId/members/me")
   @HttpCode(HttpStatus.NO_CONTENT)
   async leaveGroup(
-    @Param('groupId', ParseUUIDPipe) groupId: string,
-    @Req() req: AuthenticatedRequest,
+    @Param("groupId", ParseUUIDPipe) groupId: string,
+    @Req() req: AuthenticatedRequest
   ): Promise<void> {
     await this.groupsService.leaveGroup(groupId, req.user.userId);
   }
 
-  // --- DELETE /:groupId/members/:userId ---
-  @Delete(':groupId/members/:userId')
-  @HttpCode(HttpStatus.NO_CONTENT) // Return 204 No Content on success
+  //* --- DELETE /:groupId/members/:userId ---
+  @Delete(":groupId/members/:userId")
+  @HttpCode(HttpStatus.NO_CONTENT)
   async removeMember(
-    @Param('groupId', ParseUUIDPipe) groupId: string,
-    @Param('userId', ParseUUIDPipe) userIdToRemove: string,
-    @Req() req: AuthenticatedRequest,
+    @Param("groupId", ParseUUIDPipe) groupId: string,
+    @Param("userId", ParseUUIDPipe) userIdToRemove: string,
+    @Req() req: AuthenticatedRequest
   ): Promise<void> {
     const requestingUserId = req.user.userId;
-    await this.groupsService.removeMember(groupId, userIdToRemove, requestingUserId);
+    await this.groupsService.removeMember(
+      groupId,
+      userIdToRemove,
+      requestingUserId
+    );
   }
 
-  // --- Method to CREATE Expense within a Group ---
-  @Post(":groupId/expenses") // POST /api/groups/:groupId/expenses
+  //* --- Method to CREATE Expense within a Group ---
+  @Post(":groupId/expenses")
   async createExpense(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Body() createExpenseDto: CreateExpenseDto,
     @Req() req: AuthenticatedRequest
   ): Promise<ExpenseResponseDto> {
-    // Return type uses Response DTO
     const paidByUserId = req.user.userId;
-    // Service returns Expense entity, interceptor transforms it
+
     return this.expensesService.createExpense(
       createExpenseDto,
       groupId,
@@ -165,40 +164,37 @@ export class GroupsController {
     );
   }
 
-  // --- Method to GET all Expenses for a Group ---
-  @Get(":groupId/expenses") // GET /api/groups/:groupId/expenses
+  //* --- Method to GET all Expenses for a Group ---
+  @Get(":groupId/expenses")
   async findAllExpensesForGroup(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Req() req: AuthenticatedRequest
   ): Promise<ExpenseResponseDto[]> {
-    // Returns an array of Response DTOs
     const requestingUserId = req.user.userId;
-    // Service returns array of Expense entities, interceptor transforms them
+
     return this.expensesService.findAllForGroup(groupId, requestingUserId);
   }
 
-  // --- Method to GET Group Balances ---
-  @Get(":groupId/balances") // GET /api/groups/:groupId/balances
+  //* --- Method to GET Group Balances ---
+  @Get(":groupId/balances")
   async getGroupBalances(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Req() req: AuthenticatedRequest
   ): Promise<BalanceResponseDto[]> {
-    // Returns array of BalanceResponseDto
     const requestingUserId = req.user.userId;
-    // Service method calculates balances, interceptor formats response
+
     return this.groupsService.getGroupBalances(groupId, requestingUserId);
   }
 
-  // --- Method to CREATE Payment within a Group ---
-  @Post(":groupId/payments") // POST /api/groups/:groupId/payments
+  //* --- Method to CREATE Payment within a Group ---
+  @Post(":groupId/payments")
   async createPayment(
     @Param("groupId", ParseUUIDPipe) groupId: string,
     @Body() createPaymentDto: CreatePaymentDto,
     @Req() req: AuthenticatedRequest
   ): Promise<PaymentResponseDto> {
-    // Return type uses Response DTO
     const paidByUserId = req.user.userId;
-    // Service returns Payment entity, interceptor transforms it
+
     return this.paymentsService.createPayment(
       createPaymentDto,
       groupId,
@@ -206,13 +202,13 @@ export class GroupsController {
     );
   }
 
-  // --- Method to GET Soft-Deleted Groups created by the user ---
-  @Get('deleted/mine') // GET /api/groups/deleted/mine
+  //* --- Method to GET Soft-Deleted Groups created by the user ---
+  @Get("deleted/mine")
   async findMyDeletedGroups(
-    @Req() req: AuthenticatedRequest,
-  ): Promise<GroupResponseDto[]> { // Returns array of Group DTOs
+    @Req() req: AuthenticatedRequest
+  ): Promise<GroupResponseDto[]> {
     const requestingUserId = req.user.userId;
-    // Service returns entities, interceptor transforms them
+
     return this.groupsService.findDeletedGroupsForCreator(requestingUserId);
   }
 }

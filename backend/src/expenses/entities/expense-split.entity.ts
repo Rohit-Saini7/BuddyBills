@@ -1,25 +1,25 @@
-import { Expense } from "./expense.entity";
-import { User } from "../../users/entities/user.entity";
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  JoinColumn,
-  Unique, // Import Unique
+  Unique,
 } from "typeorm";
+import { User } from "../../users/entities/user.entity";
+import { Expense } from "./expense.entity";
 
 @Entity("expense_splits")
-@Unique(["expense_id", "owed_by_user_id"]) // Match UNIQUE constraint
+@Unique(["expense_id", "owed_by_user_id"])
 export class ExpenseSplit {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: "uuid" }) // Explicit FK column
+  @Column({ type: "uuid" })
   expense_id: string;
 
-  @Column({ type: "uuid" }) // Explicit FK column
+  @Column({ type: "uuid" })
   owed_by_user_id: string;
 
   @Column({
@@ -27,7 +27,6 @@ export class ExpenseSplit {
     precision: 10,
     scale: 2,
     transformer: {
-      // Handle NUMERIC
       to: (value: number) => value,
       from: (value: string) => parseFloat(value),
     },
@@ -37,7 +36,7 @@ export class ExpenseSplit {
   @CreateDateColumn({ type: "timestamp with time zone" })
   createdAt: Date;
 
-  // --- Relationships ---
+  //* --- Relationships ---
 
   @ManyToOne(() => Expense, (expense) => expense.splits, {
     nullable: false,
@@ -46,7 +45,7 @@ export class ExpenseSplit {
   @JoinColumn({ name: "expense_id" })
   expense: Expense;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" }) // No inverse relation needed on User typically
+  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn({ name: "owed_by_user_id" })
   owedBy: User;
 }

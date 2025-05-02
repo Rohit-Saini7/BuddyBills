@@ -1,10 +1,10 @@
-import { Exclude, Expose, Type } from 'class-transformer';
-import { UserResponseDto } from '../../users/dto/user-response.dto';
+import { Exclude, Expose, Type } from "class-transformer";
+import { UserResponseDto } from "../../users/dto/user-response.dto";
 
 @Exclude()
 export class GroupMemberResponseDto {
   @Expose()
-  id: string; // The membership ID itself
+  id: string;
 
   @Expose()
   user_id: string;
@@ -15,7 +15,6 @@ export class GroupMemberResponseDto {
   @Expose()
   joinedAt: Date;
 
-  // Expose the nested user object
   @Expose()
   @Type(() => UserResponseDto)
   user: UserResponseDto;

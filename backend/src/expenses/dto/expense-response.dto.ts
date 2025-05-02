@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose } from "class-transformer";
 
 @Exclude()
 export class ExpenseResponseDto {
@@ -15,20 +15,20 @@ export class ExpenseResponseDto {
   description: string;
 
   @Expose()
-  amount: number; // Already transformed to number by entity transformer
+  amount: number;
 
   @Expose()
-  transaction_date: string; // String from entity
+  transaction_date: string;
 
   @Expose()
   createdAt: Date;
 
-  // Optional: Expose related data if needed for specific endpoints
-  // @Expose()
-  // @Type(() => UserResponseDto)
-  // paidBy: UserResponseDto;
+  //[]: Expose related data if needed for specific endpoints
+  /* @Expose()
+  @Type(() => UserResponseDto)
+  paidBy: UserResponseDto;
 
-  // @Expose()
-  // @Type(() => ExpenseSplitResponseDto)
-  // splits: ExpenseSplitResponseDto[];
+  @Expose()
+  @Type(() => ExpenseSplitResponseDto)
+  splits: ExpenseSplitResponseDto[]; */
 }

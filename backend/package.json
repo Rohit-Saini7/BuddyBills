@@ -1,8 +1,8 @@
 {
   "name": "backend",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "Backend for the project",
+  "author": "Rohit-Saini7",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

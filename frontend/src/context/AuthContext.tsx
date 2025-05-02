@@ -1,6 +1,6 @@
-"use client"; // This Context will be used in Client Components
+"use client";
 
-import { useRouter } from "next/navigation"; // Use next/navigation for App Router
+import { useRouter } from "next/navigation";
 import React, {
   createContext,
   ReactNode,
@@ -10,7 +10,7 @@ import React, {
   useState,
 } from "react";
 
-import { apiClient } from "@/lib/apiClient"; // Import the new client
+import { apiClient } from "@/lib/apiClient";
 interface User {
   id: string;
   email: string;
@@ -23,94 +23,67 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
-  isLoading: boolean; // To handle initial auth check
-  login: (token: string) => Promise<void>; // Make login async
+  isLoading: boolean;
+  login: (token: string) => Promise<void>;
   logout: () => void;
-  checkAuth: () => Promise<void>; // Add checkAuth
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Helper function to create API client (we'll refine this)
-const getApiClient = (token: string | null) => {
-  return {
-    get: async (path: string) => {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}${path}`,
-        { headers }
-      );
-      if (!res.ok) throw new Error(`API request failed: ${res.status}`);
-      return res.json();
-    },
-    // Add post, patch, delete methods later
-  };
-};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start loading initially
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Function to handle logout: clear token, user, redirect
   const logout = useCallback(() => {
     localStorage.removeItem("authToken");
     setToken(null);
     setUser(null);
-    // Redirect to login or home page
-    router.push("/"); // Or '/login'
-    setIsLoading(false); // Ensure loading is false on logout
+
+    router.push("/");
+    setIsLoading(false);
   }, [router]);
 
-  // Function to fetch user profile using the token
-  const fetchUserProfile = useCallback(
-    async (currentToken: string) => {
-      // No need to pass token here, apiClient handles it
-      try {
-        const userData: User = await apiClient.get<User>("/users/me");
-        setUser(userData);
-      } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-        logout(); // Logout if fetching fails (token likely invalid)
-      }
-    },
-    [logout]
-  ); // Update dependencies if logout changes identity often (it shouldn't with useCallback)
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const userData: User = await apiClient.get<User>("/users/me");
+      setUser(userData);
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+      logout();
+    }
+  }, [logout]);
 
-  // Function to handle login: store token, fetch user, update state
   const login = useCallback(
     async (newToken: string) => {
       setIsLoading(true);
-      localStorage.setItem("authToken", newToken); // Store token
+      localStorage.setItem("authToken", newToken);
       setToken(newToken);
-      await fetchUserProfile(newToken); // Fetch user profile
+      await fetchUserProfile();
       setIsLoading(false);
     },
     [fetchUserProfile]
-  ); // Depend on fetchUserProfile
+  );
 
-  // Check authentication status on initial load
   const checkAuth = useCallback(async () => {
     setIsLoading(true);
     const storedToken = localStorage.getItem("authToken");
     if (storedToken) {
       setToken(storedToken);
-      await fetchUserProfile(storedToken);
+      await fetchUserProfile();
     } else {
-      setUser(null); // Ensure user is null if no token
+      setUser(null);
     }
     setIsLoading(false);
-  }, [fetchUserProfile]); // Depend on fetchUserProfile
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]); // Run only once on mount
+  }, [checkAuth]);
 
   return (
     <AuthContext.Provider
@@ -129,7 +102,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
-// Custom hook to use the AuthContext
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

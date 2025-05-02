@@ -1,11 +1,10 @@
 import { Controller, Get } from "@nestjs/common";
-import { AppService } from "./app.service";
 
-@Controller() // Will be accessed via /api/ due to global prefix
+@Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) { }
+  constructor() { }
 
-  @Get("/health") // Endpoint will be /api/health
+  @Get("/health") //* /api/health
   getHealth(): { status: string; time: string } {
     return { status: "ok", time: new Date().toISOString() };
   }

@@ -1,10 +1,9 @@
-// backend/src/expenses/expenses.module.ts
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { GroupsModule } from "../groups/groups.module"; // Still needed for GroupsService injection
+import { GroupsModule } from "../groups/groups.module";
 import { ExpenseSplit } from "./entities/expense-split.entity";
 import { Expense } from "./entities/expense.entity";
-import { ExpensesController } from "./expenses.controller"; // Import controller
+import { ExpensesController } from "./expenses.controller";
 import { ExpensesService } from "./expenses.service";
 
 @Module({

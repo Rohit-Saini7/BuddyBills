@@ -1,21 +1,19 @@
-// .vscode/settings.json
-
 {
-  // ======== Editor Settings ========
-  "editor.fontSize": 14, // Font size in pixels
-  "editor.fontFamily": "'Fira Code', monospace, 'Hack Nerd Font', 'GeistMono Nerd Font'", // Font family
-  "editor.fontLigatures": true, // Enable font ligatures
-  "editor.lineHeight": 22, // Line height
-  "editor.wordWrap": "on", // Wrap text at viewport width
-  "editor.formatOnSave": true, // Format files on save
-  "editor.formatOnPaste": true, // Format pasted code
-  "editor.formatOnType": true, // Format code while typing
-  "editor.defaultFormatter": "esbenp.prettier-vscode", // Use Prettier for formatting
-  "editor.tabSize": 2, // Number of spaces for a tab
-  "editor.insertSpaces": true, // Convert tabs to spaces
-  "editor.detectIndentation": false, // Disable auto-detection of indentation
-  "editor.minimap.enabled": true, // Enable code minimap
-  "editor.minimap.renderCharacters": true, // Show characters in minimap
+  //* ------- Editor Settings -------
+  "editor.fontSize": 14, //? Font size in pixels
+  "editor.fontFamily": "'Fira Code', monospace, 'Hack Nerd Font', 'GeistMono Nerd Font'", //? Font family
+  "editor.fontLigatures": true, //? Enable font ligatures
+  "editor.lineHeight": 22, //? Line height
+  "editor.wordWrap": "on", //? Wrap text at viewport width
+  "editor.formatOnSave": true, //? Format files on save
+  "editor.formatOnPaste": true, //? Format pasted code
+  "editor.formatOnType": true, //? Format code while typing
+  "editor.defaultFormatter": "esbenp.prettier-vscode", //? Use Prettier for formatting
+  "editor.tabSize": 2, //? Number of spaces for a tab
+  "editor.insertSpaces": true, //? Convert tabs to spaces
+  "editor.detectIndentation": false, //? Disable auto-detection of indentation
+  "editor.minimap.enabled": true, //? Enable code minimap
+  "editor.minimap.renderCharacters": true, //? Show characters in minimap
   "editor.quickSuggestions": {
     "other": true,
     "comments": true,
@@ -25,20 +23,20 @@
     "source.fixAll.eslint": "explicit",
     "source.organizeImports": "explicit"
   },
-  "editor.cursorBlinking": "phase", // Cursor animation type
-  "editor.cursorSmoothCaretAnimation": "on", // Smooth cursor animation
-  "editor.rulers": [], // Vertical lines for code width limits
-  "editor.folding": true, // Enable code folding
-  "editor.matchBrackets": "always", // Highlight matching brackets
-  "editor.renderWhitespace": "selection", // Show indentation guides
-  "editor.autoClosingBrackets": "always", // Auto-close brackets
+  "editor.cursorBlinking": "phase", //? Cursor animation type
+  "editor.cursorSmoothCaretAnimation": "on", //? Smooth cursor animation
+  "editor.rulers": [], //? Vertical lines for code width limits
+  "editor.folding": true, //? Enable code folding
+  "editor.matchBrackets": "always", //? Highlight matching brackets
+  "editor.renderWhitespace": "selection", //? Show indentation guides
+  "editor.autoClosingBrackets": "always", //? Auto-close brackets
   "editor.bracketPairColorization.enabled": true,
   "editor.suggestSelection": "first",
   "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
 
-  // ======== Files & Search ========
-  "files.autoSave": "onWindowChange", // Auto-save files after delay
-  "files.autoSaveDelay": 1000, // Delay in milliseconds for auto-save
+  //* ------- Files & Search -------
+  "files.autoSave": "onWindowChange", //? Auto-save files after delay
+  "files.autoSaveDelay": 1000, //? Delay in milliseconds for auto-save
   "files.exclude": {
     "**/.git": true,
     "**/.DS_Store": true,
@@ -50,42 +48,42 @@
     "**/dist": true,
     "**/build": true
   },
-  "files.trimTrailingWhitespace": true, // Remove trailing whitespace on save
-  "files.insertFinalNewline": true, // Insert a newline at end of file
+  "files.trimTrailingWhitespace": true, //? Remove trailing whitespace on save
+  "files.insertFinalNewline": true, //? Insert a newline at end of file
 
-  // ======== Terminal ========
-  "terminal.integrated.fontSize": 14, // Terminal font size
-  "terminal.integrated.fontFamily": "Fira Code, monospace", // Terminal font family
-  "terminal.integrated.cursorBlinking": true, // Enable terminal cursor blinking
-  "terminal.integrated.scrollback": 10000, // Number of lines to keep in history
+  //* ------- Terminal -------
+  "terminal.integrated.fontSize": 14, //? Terminal font size
+  "terminal.integrated.fontFamily": "Fira Code, monospace", //? Terminal font family
+  "terminal.integrated.cursorBlinking": true, //? Enable terminal cursor blinking
+  "terminal.integrated.scrollback": 10000, //? Number of lines to keep in history
   "terminal.integrated.enableMultiLinePasteWarning": false,
 
-  // ======== Git Integration ========
-  "git.autofetch": true, // Auto-fetch changes from remote
-  "git.enableSmartCommit": true, // Auto-stage files on commit
-  "git.defaultCloneDirectory": "~/Projects", // Default directory for git clones
+  //* ------- Git Integration -------
+  "git.autofetch": true, //? Auto-fetch changes from remote
+  "git.enableSmartCommit": true, //? Auto-stage files on commit
+  "git.defaultCloneDirectory": "~/Projects", //? Default directory for git clones
 
-  // ======== Prettier Settings ========
-  "prettier.singleQuote": true, // Use single quotes instead of double
+  //* ------- Prettier Settings -------
+  "prettier.singleQuote": true, //? Use single quotes instead of double
   "prettier.jsxSingleQuote": true,
-  "prettier.trailingComma": "es5", // Trailing commas where valid in ES5
-  "prettier.arrowParens": "always", // Always include parentheses in arrow functions
-  "prettier.endOfLine": "lf", // Use LF for line endings
-  "prettier.printWidth": 100, // Max line width
+  "prettier.trailingComma": "es5", //? Trailing commas where valid in ES5
+  "prettier.arrowParens": "always", //? Always include parentheses in arrow functions
+  "prettier.endOfLine": "lf", //? Use LF for line endings
+  "prettier.printWidth": 100, //? Max line width
 
-  // ======== JavaScript & TypeScript Settings ========
+  //* ------- JavaScript & TypeScript Settings -------
   "javascript.format.enable": true,
   "typescript.format.enable": true,
-  "typescript.tsdk": "node_modules/typescript/lib", // Use TypeScript from node_modules
-  "typescript.updateImportsOnFileMove.enabled": "always", // Update imports when files are moved
+  "typescript.tsdk": "node_modules/typescript/lib", //? Use TypeScript from node_modules
+  "typescript.updateImportsOnFileMove.enabled": "always", //? Update imports when files are moved
   "javascript.suggestionActions.enabled": true,
 
-  // ======== React & JSX Settings ========
+  //* ------- React & JSX Settings -------
   "javascript.validate.enable": true,
   "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   "typescript.validate.enable": true,
 
-  // ======== IntelliSense & Suggestions ========
+  //* ------- IntelliSense & Suggestions -------
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.preferences.quoteStyle": "single",
   "typescript.preferences.jsxAttributeCompletionStyle": "none",
@@ -94,41 +92,41 @@
   "editor.suggestOnTriggerCharacters": true,
   "editor.acceptSuggestionOnEnter": "smart",
 
-  // ======== Extensions & Workbench ========
-  "workbench.colorTheme": "One Dark Pro", // Theme (install via extension)
-  "workbench.iconTheme": "material-icon-theme", // Icon theme (install via extension)
-  "workbench.startupEditor": "none", // Disable welcome page on startup
+  //* ------- Extensions & Workbench -------
+  "workbench.colorTheme": "One Dark Pro", //? Theme (install via extension)
+  "workbench.iconTheme": "material-icon-theme", //? Icon theme (install via extension)
+  "workbench.startupEditor": "none", //? Disable welcome page on startup
   "workbench.editor.enablePreview": true,
   "workbench.editor.closeOnFileDelete": true,
 
-  // ======== Performance Settings ========
+  //* ------- Performance Settings -------
   "editor.linkedEditing": true,
   "editor.cursorSurroundingLines": 1,
-  "explorer.confirmDelete": false, // Skip delete confirmation
-  "explorer.confirmDragAndDrop": false, // Skip drag-and-drop confirmation
+  "explorer.confirmDelete": false, //? Skip delete confirmation
+  "explorer.confirmDragAndDrop": false, //? Skip drag-and-drop confirmation
 
-  // ======== Debugging ========
+  //* ------- Debugging -------
   "debug.console.fontSize": 14,
-  "debug.inlineValues": true, // Show variable values inline
+  "debug.inlineValues": true, //? Show variable values inline
   "debug.openDebug": "openOnFirstSessionStart",
 
-  // ======== Markdown Settings ========
+  //* ------- Markdown Settings -------
   "markdown.preview.fontSize": 14,
   "markdown.preview.lineHeight": 1.6,
 
-  // ======== Caching & Hot Reloading ========
+  //* ------- Caching & Hot Reloading -------
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "typescript.tsserver.log": "verbose",
 
-  // ======== Miscellaneous ========
-  "breadcrumbs.enabled": true, // Show breadcrumbs in editor
-  "outline.showVariables": true, // Show variables in outline view
-  "explorer.autoReveal": true, // Automatically expand files in explorer
-  "security.workspace.trust.enabled": true, // Enable workspace trust
+  //* ------- Miscellaneous -------
+  "breadcrumbs.enabled": true, //? Show breadcrumbs in editor
+  "outline.showVariables": true, //? Show variables in outline view
+  "explorer.autoReveal": true, //? Automatically expand files in explorer
+  "security.workspace.trust.enabled": true, //? Enable workspace trust
   "window.title": "${dirty}${activeEditorMedium}${separator}${rootName}",
   "window.titleBarStyle": "custom",
 
-  // ======== TODO Tree Extension ========
+  //* ------- TODO Tree Extension -------
   "todo-tree.general.tags": [
     "BUG:",
     "HACK:",
@@ -143,7 +141,7 @@
     "que:"
   ],
 
-  // ======== Better Comments Extension ========
+  //* ------- Better Comments Extension -------
   "better-comments.tags": [
     {
       "tag": "!",

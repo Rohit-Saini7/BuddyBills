@@ -22,7 +22,6 @@ export class Group {
   @Column({ type: "varchar", length: 100 })
   name: string;
 
-  // Keep the explicit column for the foreign key ID
   @Column({ type: "uuid" })
   created_by_user_id: string;
 
@@ -32,17 +31,20 @@ export class Group {
   @UpdateDateColumn({ type: "timestamp with time zone" })
   updatedAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp with time zone', nullable: true })
+  @DeleteDateColumn({
+    name: "deleted_at",
+    type: "timestamp with time zone",
+    nullable: true,
+  })
   deletedAt?: Date | null;
 
-
-  // --- Relationships ---
+  //* --- Relationships ---
 
   @ManyToOne(() => User, (user) => user.createdGroups, {
     nullable: false,
     onDelete: "SET NULL",
-  }) // Match SQL ON DELETE
-  @JoinColumn({ name: "created_by_user_id" }) // Links the FK column
+  })
+  @JoinColumn({ name: "created_by_user_id" })
   createdBy: User;
 
   @OneToMany(() => GroupMember, (member) => member.group)

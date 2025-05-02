@@ -22,7 +22,6 @@ export default function LoginButton() {
   }
 
   return (
-    // Use a simple anchor tag for the redirect
     <a href={googleLoginUrl} className="p-2 bg-blue-500 text-white rounded">
       Login with Google
     </a>
