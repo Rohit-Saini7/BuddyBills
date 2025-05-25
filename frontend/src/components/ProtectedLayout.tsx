@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ProtectedLayout({
@@ -11,15 +12,26 @@ export default function ProtectedLayout({
 }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && pathname !== "/") {
       router.push("/");
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return <div>Loading...</div>;
+  } else if (!isAuthenticated) {
+    return (
+      <div>
+        please login{" "}
+        <Link href="/login" className="text-primary hover:underline">
+          here
+        </Link>
+        .
+      </div>
+    );
   }
 
   return <>{children}</>;

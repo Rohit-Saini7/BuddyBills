@@ -15,7 +15,7 @@ function CallbackComponent() {
     if (token) {
       login(token)
         .then(() => {
-          router.push("/dashboard");
+          router.push("/");
         })
         .catch((err) => {
           console.error("Login failed:", err);

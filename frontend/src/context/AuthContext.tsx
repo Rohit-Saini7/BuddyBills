@@ -11,7 +11,7 @@ import React, {
 } from "react";
 
 import { apiClient } from "@/lib/apiClient";
-interface User {
+export interface User {
   id: string;
   email: string;
   name?: string;
