@@ -12,6 +12,7 @@ const nextConfig = {
   images: {
     remotePatterns: [new URL('https://lh3.googleusercontent.com/**')],
   },
+  devIndicators: process.env.NODE_ENV === "local"
 };
 
 export default withPWA(nextConfig);
