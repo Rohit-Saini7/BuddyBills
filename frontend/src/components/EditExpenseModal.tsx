@@ -7,6 +7,7 @@ import {
   SplitType,
   UpdateExpenseDto,
 } from "@/types";
+import { Label } from "@components/ui/label";
 import React, { useMemo, useState } from "react";
 
 interface EditExpenseModalProps {
@@ -213,17 +214,17 @@ export default function EditExpenseModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+      <div className="bg-accent p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Edit Expense</h2>
         <form onSubmit={handleUpdateExpense} className="space-y-4">
           {/* Description Input */}
           <div>
-            <label
+            <Label
               htmlFor="edit-description"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium"
             >
               Description
-            </label>
+            </Label>
             <input
               type="text"
               id="edit-description"
@@ -240,7 +241,7 @@ export default function EditExpenseModal({
             <div className="flex-1">
               <label
                 htmlFor="edit-amount"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium"
               >
                 Total Amount (₹)
               </label>
@@ -257,10 +258,7 @@ export default function EditExpenseModal({
               />
             </div>
             <div className="flex-1">
-              <label
-                htmlFor="edit-date"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="edit-date" className="block text-sm font-medium">
                 Date
               </label>
               <input
@@ -278,7 +276,7 @@ export default function EditExpenseModal({
           <div>
             <label
               htmlFor="edit-splitType"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium"
             >
               Split Method
             </label>
@@ -286,7 +284,7 @@ export default function EditExpenseModal({
               id="edit-splitType"
               value={splitType}
               onChange={(e) => setSplitType(e.target.value as SplitType)}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm bg-white"
+              className="mt-1 block w-full p-2 border border-gray-300 rounded shadow-sm"
               disabled={isLoading}
             >
               <option value={SplitType.EQUAL}>Split Equally</option>
@@ -426,7 +424,7 @@ export default function EditExpenseModal({
                   </div>
                 ))}
               {/* Display total shares */}
-              <div className="mt-2 text-sm font-medium text-gray-700">
+              <div className="mt-2 text-sm font-medium">
                 Total Shares Assigned: {sharesTotal.toFixed(2)}
               </div>
             </div>
@@ -441,7 +439,7 @@ export default function EditExpenseModal({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="p-2 px-4 border rounded text-gray-700 hover:bg-gray-100"
+              className="p-2 px-4 border rounded hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -452,7 +450,7 @@ export default function EditExpenseModal({
                 (splitType === SplitType.EXACT &&
                   Math.abs(remainingAmount) > 0.015)
               }
-              className="p-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+              className="p-2 px-4 bg-blue-500 rounded hover:bg-blue-600 disabled:opacity-50"
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </button>

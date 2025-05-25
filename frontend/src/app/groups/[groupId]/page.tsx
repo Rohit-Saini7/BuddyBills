@@ -239,7 +239,7 @@ export default function GroupDetailPage() {
             </div>
 
             {/* --- Balances Section --- */}
-            <div className="p-4 border rounded bg-white shadow-sm">
+            <div className="p-4 border rounded bg-accent shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Group Balances</h2>
               {balancesLoading && <p>Calculating balances...</p>}
               {balancesError && (
@@ -403,7 +403,7 @@ export default function GroupDetailPage() {
             </div> */}
 
             {/* --- Expenses List Section --- */}
-            <div className="p-4 border rounded bg-white shadow-sm">
+            <div className="p-4 border rounded bg-accent shadow-sm">
               <h2 className="text-lg font-semibold mb-3">Expenses</h2>
               {/* Display general delete error if any */}
               {deleteExpenseError && (
@@ -426,7 +426,7 @@ export default function GroupDetailPage() {
                     expenses.map((expense) => (
                       <li
                         key={expense.id}
-                        className={`p-3 border-b flex justify-between items-center group hover:bg-gray-50 ${
+                        className={`p-3 border-b flex justify-between items-center group ${
                           expense.deletedAt ? "opacity-50" : ""
                         }`}
                       >
