@@ -52,7 +52,7 @@ export function FeatureCards() {
             <CarouselContent>
               {FEATURES_LIST.map(({ name, description, icon }, index) => (
                 <CarouselItem key={index} className="max-w-full">
-                  <div className="flex gap-2.5 items-center">
+                  <div className="flex gap-2.5 items-center justify-center md:justify-normal">
                     {icon}
                     <h3 className="font-semibold text-xl md:text-2xl lg:text-3xl">
                       {name}

@@ -47,18 +47,102 @@
   ],
   "screenshots": [
     {
-      "src": "/screenshots/screenshot-desktop-1.png",
-      "sizes": "1280x720",
+      "src": "/screenshots/desktop-home-light.png",
+      "sizes": "2880x1200",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Desktop Dashboard View"
+      "label": "Desktop Home View | Light"
     },
     {
-      "src": "/screenshots/screenshot-mobile-1.png",
-      "sizes": "1080x1920",
+      "src": "/screenshots/desktop-home-dark.png",
+      "sizes": "2880x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Home View | Dark"
+    },
+    {
+      "src": "/screenshots/desktop-groups-light.png",
+      "sizes": "2880x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Groups View | Light"
+    },
+    {
+      "src": "/screenshots/desktop-groups-dark.png",
+      "sizes": "2880x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Groups View | Dark"
+    },
+    {
+      "src": "/screenshots/desktop-group-1-light.png",
+      "sizes": "2880x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Group View | Light"
+    },
+    {
+      "src": "/screenshots/desktop-group-1-dark.png",
+      "sizes": "2880x1200",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Group View | Dark"
+    },
+    {
+      "src": "/screenshots/home-light.png",
+      "sizes": "720x1600",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Mobile Group View"
+      "label": "Mobile Home View | Light"
+    },
+    {
+      "src": "/screenshots/home-dark.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Home View | Dark"
+    },
+    {
+      "src": "/screenshots/groups-light.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Groups View | Light"
+    },
+    {
+      "src": "/screenshots/groups-dark.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Groups View | Dark"
+    },
+    {
+      "src": "/screenshots/sidebar-light.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Sidebar View | Light"
+    },
+    {
+      "src": "/screenshots/sidebar-dark.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Sidebar View | Dark"
+    },
+    {
+      "src": "/screenshots/group-1-light.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Group View | Light"
+    },
+    {
+      "src": "/screenshots/group-1-dark.png",
+      "sizes": "720x1600",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Group View | Dark"
     }
   ]
 }

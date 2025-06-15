@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import LoaderMessages from "@components/LoadingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
@@ -27,12 +28,12 @@ function CallbackComponent() {
     }
   }, [searchParams, login, router]);
 
-  return <div>Loading... Please wait.</div>;
+  return <LoaderMessages />;
 }
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<div>Loading callback...</div>}>
+    <Suspense fallback={<LoaderMessages />}>
       <CallbackComponent />
     </Suspense>
   );
