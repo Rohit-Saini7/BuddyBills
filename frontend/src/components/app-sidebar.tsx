@@ -35,12 +35,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const activeGroupsApiUrl = "/groups";
   const deletedGroupsApiUrl = "/groups/deleted/mine";
   const { data: groups } = useSWR(
-    !isAuthLoading ? activeGroupsApiUrl : null,
+    !isAuthLoading && isAuthenticated ? activeGroupsApiUrl : null,
     fetcher
   );
 
   const { data: deletedGroups } = useSWR(
-    !isAuthLoading ? deletedGroupsApiUrl : null,
+    !isAuthLoading && isAuthenticated ? deletedGroupsApiUrl : null,
     fetcher
   );
 
