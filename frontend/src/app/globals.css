@@ -49,6 +49,7 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --animate-pulse-shift: pulse-shift 1s infinite ease-in-out;
+  --animate-word-spin: word-spin 4s infinite;
   --animate-long-press-fill: long-press-fill var(--long-press-duration, 3s)
     linear forwards;
   --shadow-moon: inset -3px -2px 5px -2px #8983f7, inset -10px -4px 0 0 #a3dafb;
@@ -110,6 +111,33 @@
       width: 100%;
     }
   }
+
+  @keyframes word-spin {
+    10% {
+      transform: translateY(-102%);
+    }
+    25% {
+      transform: translateY(-100%);
+    }
+    35% {
+      transform: translateY(-202%);
+    }
+    50% {
+      transform: translateY(-200%);
+    }
+    60% {
+      transform: translateY(-302%);
+    }
+    75% {
+      transform: translateY(-300%);
+    }
+    85% {
+      transform: translateY(-402%);
+    }
+    100% {
+      transform: translateY(-400%);
+    }
+  }
 }
 
 body {
@@ -157,5 +185,13 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  .flex-center {
+    @apply flex-center;
+  }
+
+  .flex-between {
+    @apply flex-between;
   }
 }

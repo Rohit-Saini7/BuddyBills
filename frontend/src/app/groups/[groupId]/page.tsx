@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -14,6 +15,7 @@ import {
 import EditExpenseModal from "@components/EditExpenseModal";
 import ProtectedLayout from "@components/ProtectedLayout";
 import { SiteHeader } from "@components/site-header";
+import { UserIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useCallback, useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
@@ -234,7 +236,7 @@ export default function GroupDetailPage() {
 
         {!isLoading && !groupError && group && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between space-x-3 mb-4">
+            <div className="flex-between space-x-3 mb-4">
               <h1 className="text-2xl font-bold"> {group.name} </h1>
             </div>
 
@@ -282,17 +284,21 @@ export default function GroupDetailPage() {
                       return (
                         <li
                           key={balance.user.id}
-                          className="flex items-center justify-between p-2 border-b last:border-b-0"
+                          className="flex-between p-2 border-b last:border-b-0"
                         >
                           <div className="flex items-center space-x-3">
-                            <img
-                              src={
-                                balance.user.avatar_url ||
-                                `https://ui-avatars.com/api/?name=${encodeURIComponent(balance.user.name || balance.user.email)}&background=random`
-                              }
-                              alt={balance.user.name || balance.user.email}
-                              className="w-8 h-8 rounded-full"
-                            />
+                            <Avatar className="h-8 w-8 rounded-lg">
+                              <AvatarImage
+                                src={balance.user.avatar_url}
+                                alt={
+                                  (isCurrentUser ? "Your" : balance.user.name) +
+                                  " Icon"
+                                }
+                              />
+                              <AvatarFallback className="rounded-lg">
+                                <UserIcon color="#edededaa" />
+                              </AvatarFallback>
+                            </Avatar>
                             <span className="font-medium">
                               {isCurrentUser
                                 ? "You"

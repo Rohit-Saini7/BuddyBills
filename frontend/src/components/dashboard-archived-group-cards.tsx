@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/apiClient";
 import { GroupResponseDto } from "@/types";
 import { Button } from "@components/ui/button";
-import { Skeleton } from "@components/ui/skeleton";
+import { Separator } from "@components/ui/separator";
 import { restoreToastId } from "@utils/constants";
 import { ArchiveRestoreIcon } from "lucide-react";
 import React from "react";
@@ -21,7 +21,7 @@ export function ArchivedGroupCards() {
   const deletedGroupsApiUrl = "/groups/deleted/mine";
 
   //* --- Restore Group Handler ---
-  const handleRestoreGroup = React.useCallback(
+  const restoreGroup = React.useCallback(
     async (groupId: string) => {
       toast.loading("Restoring group, please wait.", {
         id: restoreToastId,
@@ -50,6 +50,20 @@ export function ArchivedGroupCards() {
     [mutate]
   );
 
+  const handleRestoreGroup = React.useCallback(
+    (group: GroupResponseDto) => {
+      toast("Restore Confirmation", {
+        description: `Are you sure you want to restore the group "${group.name}"?`,
+        closeButton: true,
+        action: {
+          label: "Restore",
+          onClick: () => restoreGroup(group.id),
+        },
+      });
+    },
+    [restoreGroup]
+  );
+
   const {
     data: deletedGroups,
     error,
@@ -65,44 +79,37 @@ export function ArchivedGroupCards() {
   }
 
   if (isLoading) {
-    return (
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {[1, 2, 3, 4].map((e) => (
-          <div
-            className="flex items-center space-x-4"
-            key={"deleted-groups-skeleton-" + e}
-          >
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-[200px]" />
-              <Skeleton className="h-4 w-[150px]" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return;
   }
 
-  return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      {deletedGroups?.map((group) => (
-        <Card className="@container/card" key={group.id}>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold tabular-nums @[250px]/card:text-xl">
-              {group.name}
-            </CardTitle>
-            <CardAction>
-              <Button
-                variant="outline"
-                onClick={() => handleRestoreGroup(group.id)}
-              >
-                <ArchiveRestoreIcon />
-                Restore
-              </Button>
-            </CardAction>
-          </CardHeader>
-        </Card>
-      ))}
-    </div>
-  );
+  if (deletedGroups?.length) {
+    return (
+      <>
+        <Separator className="px-2" />
+        <h2 className="text-xl font-semibold px-6">Deleted Groups</h2>
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+          {deletedGroups?.map((group) => (
+            <Card className="@container/card" key={group.id}>
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold tabular-nums @[250px]/card:text-xl">
+                  {group.name}
+                </CardTitle>
+                <CardAction>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleRestoreGroup(group)}
+                  >
+                    <ArchiveRestoreIcon />
+                    Restore
+                  </Button>
+                </CardAction>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </>
+    );
+  } else {
+    return;
+  }
 }

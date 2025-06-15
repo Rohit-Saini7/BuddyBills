@@ -301,10 +301,7 @@ export default function EditExpenseModal({
               </h3>
               {/* Member Inputs for Exact Split */}
               {members.map((member) => (
-                <div
-                  key={member.user.id}
-                  className="flex items-center justify-between space-x-2"
-                >
+                <div key={member.user.id} className="flex-between space-x-2">
                   <label
                     htmlFor={`edit-split-${member.user.id}`}
                     className="flex-grow text-sm text-gray-600 truncate"
@@ -347,10 +344,7 @@ export default function EditExpenseModal({
               </h3>
               {members &&
                 members.map((member) => (
-                  <div
-                    key={member.user.id}
-                    className="flex items-center justify-between space-x-2"
-                  >
+                  <div key={member.user.id} className="flex-between space-x-2">
                     <label
                       htmlFor={`split-${member.user.id}`}
                       className="flex-grow text-sm text-gray-600 truncate"
@@ -396,10 +390,7 @@ export default function EditExpenseModal({
 
               {members &&
                 members.map((member) => (
-                  <div
-                    key={member.user.id}
-                    className="flex items-center justify-between space-x-2"
-                  >
+                  <div key={member.user.id} className="flex-between space-x-2">
                     <label
                       htmlFor={`split-${member.user.id}`}
                       className="flex-grow text-sm text-gray-600 truncate"

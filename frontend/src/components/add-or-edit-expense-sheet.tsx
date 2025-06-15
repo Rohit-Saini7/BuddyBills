@@ -336,10 +336,7 @@ export function AddOrEditExpenseSheet({
             )}
             {members &&
               members.map((member) => (
-                <div
-                  key={member.user.id}
-                  className="flex items-center justify-between space-x-2"
-                >
+                <div key={member.user.id} className="flex-between space-x-2">
                   <label
                     htmlFor={`split-${member.user.id}`}
                     className="flex-grow text-sm text-gray-600"
@@ -385,10 +382,7 @@ export function AddOrEditExpenseSheet({
             )}
             {members &&
               members.map((member) => (
-                <div
-                  key={member.user.id}
-                  className="flex items-center justify-between space-x-2"
-                >
+                <div key={member.user.id} className="flex-between space-x-2">
                   <label
                     htmlFor={`split-${member.user.id}`}
                     className="flex-grow text-sm text-gray-600 truncate"
@@ -435,10 +429,7 @@ export function AddOrEditExpenseSheet({
             )}
             {members &&
               members.map((member) => (
-                <div
-                  key={member.user.id}
-                  className="flex items-center justify-between space-x-2"
-                >
+                <div key={member.user.id} className="flex-between space-x-2">
                   <label
                     htmlFor={`split-${member.user.id}`}
                     className="flex-grow text-sm text-gray-600 truncate"

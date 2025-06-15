@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import LoadingCard from "@components/LoadingCard";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -21,7 +22,7 @@ export default function ProtectedLayout({
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingCard />;
   } else if (!isAuthenticated) {
     return (
       <div>

@@ -1,5 +1,5 @@
 const LoaderDotted = () => (
-  <div className="flex items-center justify-center space-x-2">
+  <div className="flex-center space-x-2">
     {[0, 1, 2].map((i) => (
       <div
         key={i}

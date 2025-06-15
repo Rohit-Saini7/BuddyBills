@@ -152,7 +152,7 @@ export function AddMemberSheet({ group }: { group: GroupResponseDto }) {
                   return (
                     <li
                       key={member.id}
-                      className={`flex items-center justify-between space-x-3 p-2 border-b last:border-b-0 ${
+                      className={`flex-between space-x-3 p-2 border-b last:border-b-0 ${
                         isInactive ? "opacity-50" : ""
                       }`}
                     >
@@ -171,7 +171,7 @@ export function AddMemberSheet({ group }: { group: GroupResponseDto }) {
                           className="w-8 h-8 rounded-full flex-shrink-0"
                         />
                         <div className="min-w-0 grow">
-                          <div className="flex items-center justify-between">
+                          <div className="flex-between">
                             <span className={`font-medium truncate block`}>
                               {member.user.name || "Unnamed User"}
                             </span>
@@ -297,7 +297,7 @@ export function AddMemberSheet({ group }: { group: GroupResponseDto }) {
                 return (
                   <li
                     key={member.id}
-                    className={`flex items-center justify-between space-x-3 p-2 border-b last:border-b-0 ${
+                    className={`flex-between space-x-3 p-2 border-b last:border-b-0 ${
                       isInactive ? "opacity-50" : ""
                     }`}
                   >
