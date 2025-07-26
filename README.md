@@ -5,7 +5,7 @@ BuddyBills is a Progressive Web App (PWA) designed for easy and transparent mana
 **✨ Core Features:**
 
 - 👥 Simple Group Creation & Member Management
-- 🔐 Secure Authentication via Google Login (Backend-handled with Passport.js)
+- 🔐 Secure Authentication via Google and Github Login (Backend-handled with Passport.js)
 - 💵 Add Expenses & Split Equally (More splitting options planned!)
 - 📊 Clear Balance Overview within Groups
 - ✅ Easy Debt Settlement Tracking
@@ -40,7 +40,7 @@ BuddyBills is a Progressive Web App (PWA) designed for easy and transparent mana
 **Authentication (Implemented in Backend):**
 
 - **Library:** **Passport.js** (`@nestjs/passport`, `passport`)
-- **Strategies:** Google OAuth 2.0 (`passport-google-oauth20`), JWT (`passport-jwt`)
+- **Strategies:** Google OAuth 2.0 (`passport-google-oauth20`), Github OAuth 2.0 (`passport-github2`), JWT (`passport-jwt`)
 - **Tokens:** **JSON Web Tokens (JWT)** (`@nestjs/jwt`)
 
 **PWA (Progressive Web App):**
@@ -51,7 +51,7 @@ BuddyBills is a Progressive Web App (PWA) designed for easy and transparent mana
 
 **MVP Scope:**
 
-- [x] **Authentication:** Log in using Google.
+- [x] **Authentication:** Log in using Google, and Github.
 - [x] **Groups:** Create a new group. Add members to a group (maybe just by listing them initially, invite later?). View your groups.
 - [x] **Expenses:** Add a new expense within a group (Amount, Description, Who Paid).
 - [x] **Splitting:** Split expenses equally among all group members (simplest method first).

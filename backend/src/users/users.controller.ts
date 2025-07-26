@@ -2,6 +2,7 @@ import {
   ClassSerializerInterceptor,
   Controller,
   Get,
+  NotFoundException,
   Req,
   UseGuards,
   UseInterceptors,
@@ -21,13 +22,17 @@ interface AuthenticatedRequest extends Request {
 @Controller("users") //* /api/users
 @UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get("me") //* /api/users/me
   async getMe(@Req() req: AuthenticatedRequest): Promise<UserResponseDto> {
     const userId = req.user.userId;
 
-    return this.usersService.findMeById(userId);
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException("User not found.");
+    }
+    return user;
   }
 }

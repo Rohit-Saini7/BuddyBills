@@ -1,57 +1,46 @@
+import { ConflictException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { AuthGuard } from "@nestjs/passport";
 import { Test, TestingModule } from "@nestjs/testing";
-import { Request, Response } from "express";
-import { User } from "../users/entities/user.entity";
+import { Response } from "express";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
-import { AuthResponseDto } from "./dto/auth-response.dto";
-
-//* --- Mocks ---
-const mockAuthService = {
-  login: jest.fn(),
-};
-
-const mockConfigService = {
-  get: jest.fn(),
-};
-
-//* Mock AuthGuard('google') - simple mock assuming it passes for controller logic tests
-const mockGoogleAuthGuard = {
-  canActivate: jest.fn().mockReturnValue(true),
-};
-
-interface AuthenticatedRequest extends Request {
-  user?: User;
-}
-
-//* --- Mock Data ---
-const mockUser: User = {
-  id: "user-uuid-123",
-  google_id: "google-profile-id-abc",
-  email: "test@example.com",
-  name: "Test User",
-  avatar_url: "null",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  createdGroups: [],
-  groupMemberships: [],
-  paidExpenses: [],
-  paymentsMade: [],
-  paymentsReceived: [],
-};
-
-const mockAccessToken = "mock.jwt.token.string";
-const mockAuthResponse: AuthResponseDto = { accessToken: mockAccessToken };
-const mockFrontendUrl = "http://localhost:3000";
-const mockFailureRedirectUrl = `${mockFrontendUrl}/login/failure`;
-const mockSuccessRedirectUrlBase = `${mockFrontendUrl}/auth/callback`;
-const mockSuccessRedirectUrlWithToken = `${mockSuccessRedirectUrlBase}?token=${mockAccessToken}`;
 
 describe("AuthController", () => {
   let controller: AuthController;
-  let authService: typeof mockAuthService;
-  let configService: typeof mockConfigService;
+  let authService: AuthService;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let configService: ConfigService;
+
+  const mockAuthService = {
+    login: jest.fn(),
+    completeLinking: jest.fn(),
+  };
+
+  const mockConfigService = {
+    get: jest.fn((key: string) => {
+      if (key === "FRONTEND_URL") return "https://frontend.example.com";
+      return null;
+    }),
+  };
+
+  const mockResponse = () => {
+    const res: Partial<Response> = {
+      redirect: jest.fn(),
+    };
+    return res as Response;
+  };
+
+  const mockUser = {
+    id: "123",
+    name: "Test User",
+    email: "test@example.com",
+    provider: "google",
+    providerId: "google-123",
+  };
+
+  beforeAll(() => {
+    console.error = jest.fn();
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -60,108 +49,123 @@ describe("AuthController", () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
-    })
-      .overrideGuard(AuthGuard("google"))
-      .useValue(mockGoogleAuthGuard)
-      .compile();
+    }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    authService = module.get(AuthService);
-    configService = module.get(ConfigService);
+    authService = module.get<AuthService>(AuthService);
+    configService = module.get<ConfigService>(ConfigService);
+  });
 
-    jest.clearAllMocks();
+  afterEach(() => jest.clearAllMocks());
 
-    configService.get.mockImplementation((key: string) => {
-      if (key === "FRONTEND_URL") return mockFrontendUrl;
-      return undefined;
+  describe("completeLinking", () => {
+    it("should delegate to AuthService.completeLinking", async () => {
+      const token = "some.jwt.token";
+      const result = { accessToken: "abc" };
+
+      mockAuthService.completeLinking.mockResolvedValue(result);
+
+      expect(await controller.completeLinking({ token })).toBe(result);
+      expect(authService.completeLinking).toHaveBeenCalledWith(token);
     });
   });
 
-  it("should be defined", () => {
-    expect(controller).toBeDefined();
-  });
+  describe("handleAuthRedirect", () => {
+    it("should redirect to callback with access token on success", async () => {
+      const req = { user: mockUser };
+      const res = mockResponse();
+      const token = "jwt-token";
 
-  //* --- Test for googleAuth ---
-  describe("googleAuth", () => {
-    it("should exist (functionality relies on AuthGuard)", () => {
-      expect(controller.googleAuth).toBeDefined();
-    });
-  });
+      mockAuthService.login.mockResolvedValue({ accessToken: token });
 
-  //* --- Tests for googleAuthRedirect ---
-  describe("googleAuthRedirect", () => {
-    let mockRequest: Partial<Request>;
-    let mockRes: Partial<Response>;
+      await controller["handleAuthRedirect"](req as any, res);
 
-    beforeEach(() => {
-      mockRequest = {};
-      mockRes = {
-        redirect: jest.fn(),
-      };
-    });
-
-    it("should call authService.login and redirect with token if req.user exists", async () => {
-      //? Arrange
-      mockRequest.user = mockUser;
-      authService.login.mockResolvedValue(mockAuthResponse);
-
-      //? Act
-      await controller.googleAuthRedirect(
-        mockRequest as AuthenticatedRequest,
-        mockRes as Response
-      );
-
-      //? Assert
-      expect(configService.get).toHaveBeenCalledWith("FRONTEND_URL");
-
-      expect(authService.login).toHaveBeenCalledTimes(1);
-      expect(authService.login).toHaveBeenCalledWith(mockUser);
-
-      expect(mockRes.redirect).toHaveBeenCalledTimes(1);
-      expect(mockRes.redirect).toHaveBeenCalledWith(
-        mockSuccessRedirectUrlWithToken
+      expect(res.redirect).toHaveBeenCalledWith(
+        `https://frontend.example.com/auth/callback?token=${token}`
       );
     });
 
-    it("should redirect to failure URL if req.user does not exist", async () => {
-      //? Arrange
-      mockRequest.user = undefined;
+    it("should redirect to link-account on ConflictException", async () => {
+      const req = { user: mockUser };
+      const res = mockResponse();
 
-      //? Act
-      await controller.googleAuthRedirect(
-        mockRequest as AuthenticatedRequest,
-        mockRes as Response
-      );
+      const conflict = new ConflictException({
+        linkingToken: "link-token",
+        existingProviders: "github",
+      });
 
-      //? Assert
-      expect(configService.get).toHaveBeenCalledWith("FRONTEND_URL");
+      mockAuthService.login.mockRejectedValue(conflict);
 
-      expect(authService.login).not.toHaveBeenCalled();
+      await controller["handleAuthRedirect"](req as any, res);
 
-      expect(mockRes.redirect).toHaveBeenCalledTimes(1);
-      expect(mockRes.redirect).toHaveBeenCalledWith(mockFailureRedirectUrl);
-    });
-
-    it("should propagate error if authService.login fails", async () => {
-      //? Arrange
-      mockRequest.user = mockUser;
-      const loginError = new Error("Failed to sign JWT");
-      authService.login.mockRejectedValue(loginError);
-
-      //? Act & Assert
-      await expect(
-        controller.googleAuthRedirect(
-          mockRequest as AuthenticatedRequest,
-          mockRes as Response
+      expect(res.redirect).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "https://frontend.example.com/auth/link-account?"
         )
-      ).rejects.toThrow(loginError);
+      );
 
-      //? Verify service was called
-      expect(authService.login).toHaveBeenCalledTimes(1);
-      expect(authService.login).toHaveBeenCalledWith(mockUser);
+      const redirectUrl = (res.redirect as jest.Mock).mock.calls[0][0];
+      expect(redirectUrl).toContain("token=link-token");
+      expect(redirectUrl).toContain("provider=google");
+      expect(redirectUrl).toContain("existingProviders=github");
+      expect(redirectUrl).toContain("name=Test+User");
+    });
 
-      //? Verify redirect was NOT called
-      expect(mockRes.redirect).not.toHaveBeenCalled();
+    it("should redirect to login failure on unexpected error", async () => {
+      const req = { user: mockUser };
+      const res = mockResponse();
+
+      mockAuthService.login.mockRejectedValue(new Error("something bad"));
+
+      await controller["handleAuthRedirect"](req as any, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        "https://frontend.example.com/login/failure"
+      );
+    });
+
+    it("should redirect to login failure if no user", async () => {
+      const req = {}; // no user
+      const res = mockResponse();
+
+      await controller["handleAuthRedirect"](req as any, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        "https://frontend.example.com/login/failure"
+      );
+    });
+  });
+
+  describe("googleAuth & githubAuth", () => {
+    it("should return undefined (passport will redirect)", () => {
+      expect(controller.googleAuth()).toBeUndefined();
+      expect(controller.githubAuth()).toBeUndefined();
+    });
+  });
+
+  describe("googleAuthRedirect & githubAuthRedirect", () => {
+    it("should call handleAuthRedirect for Google", async () => {
+      const req = { user: mockUser };
+      const res = mockResponse();
+
+      const spy = jest
+        .spyOn(controller as any, "handleAuthRedirect")
+        .mockImplementation(() => Promise.resolve());
+
+      await controller.googleAuthRedirect(req as any, res);
+      expect(spy).toHaveBeenCalledWith(req, res);
+    });
+
+    it("should call handleAuthRedirect for GitHub", async () => {
+      const req = { user: mockUser };
+      const res = mockResponse();
+
+      const spy = jest
+        .spyOn(controller as any, "handleAuthRedirect")
+        .mockImplementation(() => Promise.resolve());
+
+      await controller.githubAuthRedirect(req as any, res);
+      expect(spy).toHaveBeenCalledWith(req, res);
     });
   });
 });

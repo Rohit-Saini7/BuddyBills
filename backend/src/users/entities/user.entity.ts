@@ -1,4 +1,5 @@
 import { GroupMember } from "src/groups/entities/group-member.entity";
+import { UserIdentity } from "src/users/entities/user-identity.entity";
 import {
   Column,
   CreateDateColumn,
@@ -17,9 +18,6 @@ export class User {
   id: string;
 
   @Column({ type: "varchar", length: 255, unique: true })
-  google_id: string;
-
-  @Column({ type: "varchar", length: 255, unique: true })
   email: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
@@ -35,6 +33,10 @@ export class User {
   updatedAt: Date;
 
   //* --- Relationships ---
+
+  //? Identities linked to this user (e.g., Google, Github)
+  @OneToMany(() => UserIdentity, (identity) => identity.user)
+  identities: UserIdentity[];
 
   //? Groups created by this user
   @OneToMany(() => Group, (group) => group.createdBy)

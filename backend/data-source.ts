@@ -1,4 +1,5 @@
 import "dotenv/config"; //? Load .env variables FIRST
+import { UserIdentity } from "src/users/entities/user-identity.entity";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { ExpenseSplit } from "./src/expenses/entities/expense-split.entity";
 import { Expense } from "./src/expenses/entities/expense.entity";
@@ -28,7 +29,15 @@ export const dataSourceOptions: DataSourceOptions = {
   database: process.env.DB_DATABASE,
   ssl: true,
 
-  entities: [User, Group, GroupMember, Expense, ExpenseSplit, Payment],
+  entities: [
+    User,
+    UserIdentity,
+    Group,
+    GroupMember,
+    Expense,
+    ExpenseSplit,
+    Payment,
+  ],
   migrations: [__dirname + "/src/database/migrations/*{.ts,.js}"],
   migrationsTableName: "typeorm_migrations",
   logging: ["error", "migration"],
