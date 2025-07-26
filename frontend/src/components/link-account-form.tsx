@@ -64,7 +64,7 @@ export function LinkAccountForm() {
 
   return (
     <div className="flex flex-col gap-6 p-6 text-center md:p-8">
-      <h1 className="text-2xl font-bold">You're already here.</h1>
+      <h1 className="text-2xl font-bold">You&apos;re already here.</h1>
 
       {error ? (
         <p className="text-red-500 bg-red-100 p-3 rounded-md">{error}</p>
@@ -75,7 +75,7 @@ export function LinkAccountForm() {
             <span className="font-semibold text-primary">
               {displayInfo.name}
             </span>
-            ! Looks like you've signed in with{" "}
+            ! Looks like you&apos;ve signed in with{" "}
             <span className="font-semibold text-primary capitalize">
               {formatProviders(displayInfo.existingProviders)}
             </span>{" "}

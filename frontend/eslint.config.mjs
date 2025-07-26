@@ -6,7 +6,10 @@ import * as regexpPlugin from "eslint-plugin-regexp";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import { dirname } from "path";
-import tseslint, { parser as typescriptEslintParser } from "typescript-eslint";
+import tseslint, {
+  parser as typescriptEslintParser,
+  plugin as typescriptEslintPlugin,
+} from "typescript-eslint";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,8 +30,6 @@ const eslintConfig = [
 ];
 
 export default defineConfig({
-  root: true,
-  ...eslintConfig,
   ignores: [
     "node_modules/",
     "out/",
@@ -43,7 +44,7 @@ export default defineConfig({
     "public/workbox-*.js",
     "public/pdf.worker.min.mjs",
   ],
-  ...tseslint.configs.recommended,
+
   languageOptions: {
     globals: {
       ...globals.browser,
@@ -62,8 +63,19 @@ export default defineConfig({
       sourceType: "module",
     },
   },
-  plugins: { js },
-  extends: ["js/recommended"],
+
+  extends: [
+    ...eslintConfig,
+    eslintConfigPrettier,
+    ...tseslint.configs.recommended,
+    pluginReact.configs.flat.recommended,
+    regexpPlugin.configs["flat/recommended"],
+  ],
+
+  plugins: {
+    "@typescript-eslint": typescriptEslintPlugin, // ✅ REQUIRED
+  },
+
   rules: {
     "no-undef": "off",
     "require-jsdoc": "off",
@@ -104,12 +116,9 @@ export default defineConfig({
     ],
     "react-hooks/exhaustive-deps": "off",
   },
-  ...pluginReact.configs.flat.recommended,
   settings: {
     react: {
       version: "detect",
     },
   },
-  ...regexpPlugin.configs["flat/recommended"],
-  ...eslintConfigPrettier,
 });

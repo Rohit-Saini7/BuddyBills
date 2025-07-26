@@ -10,7 +10,7 @@ import { useSWRConfig } from "swr";
 
 export function EditGroupSheet({ group }: { group: GroupResponseDto }) {
   const { mutate } = useSWRConfig();
-  const groupApiUrl = group.id ? `/groups/${group.id}` : null;
+  // const groupApiUrl = group.id ? `/groups/${group.id}` : null;
 
   const [editedGroupName, setEditedGroupName] = useState(group.name);
   const [editError, setEditError] = useState<string | null>(null);

@@ -39,8 +39,8 @@ export default function GroupDetailPage() {
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
-  const [recordPaymentError, setRecordPaymentError] = useState<string | null>(
+  const [_isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [_recordPaymentError, setRecordPaymentError] = useState<string | null>(
     null
   );
 
@@ -55,10 +55,10 @@ export default function GroupDetailPage() {
     useState<ExpenseResponseDto | null>(null);
 
   //* --- NEW State for Editing Group Name ---
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [_isEditingName, setIsEditingName] = useState(false);
   const [editedGroupName, setEditedGroupName] = useState("");
-  const [editNameError, setEditNameError] = useState<string | null>(null);
-  const [isSavingName, setIsSavingName] = useState(false);
+  const [_editNameError, setEditNameError] = useState<string | null>(null);
+  const [_isSavingName, setIsSavingName] = useState(false);
 
   //* --- SWR Hooks ---
   const groupApiUrl = groupId ? `/groups/${groupId}` : null;
@@ -71,8 +71,8 @@ export default function GroupDetailPage() {
   const membersApiUrl = groupId ? `/groups/${groupId}/members` : null;
   const {
     data: members,
-    error: membersError,
-    isLoading: membersLoading,
+    error: _membersError,
+    isLoading: _membersLoading,
   } = useSWR(membersApiUrl, fetchMembers);
 
   const expensesApiUrl = groupId ? `/groups/${groupId}/expenses` : null;
@@ -89,7 +89,7 @@ export default function GroupDetailPage() {
     isLoading: balancesLoading,
   } = useSWR(balancesApiUrl, fetchBalances);
 
-  const isSettledUp = useMemo(() => {
+  const _isSettledUp = useMemo(() => {
     if (!balances || balances.length === 0) {
       return true;
     }
@@ -101,7 +101,7 @@ export default function GroupDetailPage() {
 
   //* --- Handlers ---
 
-  const handleRecordPayment = async (
+  const _handleRecordPayment = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
@@ -174,7 +174,7 @@ export default function GroupDetailPage() {
     [groupId, mutate, expensesApiUrl, balancesApiUrl]
   );
 
-  const handleEditNameClick = () => {
+  const _handleEditNameClick = () => {
     if (group) {
       setEditedGroupName(group.name);
       setIsEditingName(true);
@@ -182,12 +182,12 @@ export default function GroupDetailPage() {
     }
   };
 
-  const handleCancelEditName = () => {
+  const _handleCancelEditName = () => {
     setIsEditingName(false);
     setEditNameError(null);
   };
 
-  const handleSaveGroupName = async () => {
+  const _handleSaveGroupName = async () => {
     if (!editedGroupName.trim()) {
       setEditNameError("Group name cannot be empty.");
       return;
@@ -221,7 +221,7 @@ export default function GroupDetailPage() {
 
   const isLoading = groupLoading || isAuthLoading;
 
-  const otherMembers =
+  const _otherMembers =
     members?.filter((m) => m.user.id !== loggedInUser?.id) || [];
 
   return (
@@ -231,7 +231,7 @@ export default function GroupDetailPage() {
         {/* Group Details Loading/Error/Display */}
         {isLoading && <p>Loading group details...</p>}
         {groupError && (
-          <div className="text-red-500 mb-4"> /* ... Error Display ... */ </div>
+          <div className="text-red-500 mb-4">{/* ... Error Display ... */}</div>
         )}
 
         {!isLoading && !groupError && group && (

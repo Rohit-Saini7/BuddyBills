@@ -1,6 +1,4 @@
-type Props = {};
-
-function LoginFailure({}: Props) {
+function LoginFailure() {
   return <div>LoginFailure</div>;
 }
 

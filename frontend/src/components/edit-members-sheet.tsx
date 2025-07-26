@@ -10,6 +10,7 @@ import {
 import { DropdownMenuItem } from "@components/ui/dropdown-menu";
 import WrapperSheet from "@components/wrapper-sheet";
 import { LoaderIcon, UserRoundPen, UserRoundXIcon } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 
@@ -87,8 +88,8 @@ export function AddMemberSheet({ group }: { group: GroupResponseDto }) {
       canCloseSheet = false;
     } finally {
       setIsSaving(false);
-      return canCloseSheet;
     }
+    return canCloseSheet;
   };
 
   function handleSheetClose() {
@@ -160,7 +161,7 @@ export function AddMemberSheet({ group }: { group: GroupResponseDto }) {
                       <div className="flex items-center space-x-3 flex-grow min-w-0">
                         {" "}
                         {/* Ensure content doesn't push button out */}
-                        <img
+                        <Image
                           src={
                             member.user.avatar_url ||
                             `https://ui-avatars.com/api/?name=${encodeURIComponent(

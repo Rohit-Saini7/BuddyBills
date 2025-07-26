@@ -30,12 +30,12 @@ export default function WrapperSheet({
   description?: string;
   children: React.ReactNode;
   submitLabel: string;
-  submitFunction: Function;
+  submitFunction: () => Promise<any>;
   submitError?: string;
   submitLoading?: boolean;
   submitDelay?: number;
   submitDisable?: boolean;
-  onClose?: Function;
+  onClose?: () => void;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 

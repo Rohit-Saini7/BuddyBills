@@ -46,7 +46,7 @@ export default function LoaderMessages() {
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => {
-        let next = randomIndex();
+        const next = randomIndex();
         return next === prev ? (next + 1) % MESSAGES.length : next;
       });
     }, 1500);

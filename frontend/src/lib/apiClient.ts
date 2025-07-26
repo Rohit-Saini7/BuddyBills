@@ -29,7 +29,9 @@ const request = async <T>(
     let errorData;
     try {
       errorData = await response.json();
-    } catch (e) { }
+    } catch (_e) {
+      //
+    }
     console.error("API Error Response:", errorData);
     throw new Error(
       errorData?.message || `HTTP error! status: ${response.status}`

@@ -28,20 +28,20 @@ const fetchMembers = (url: string) =>
 export function AddOrEditExpenseSheet({
   isEdit,
   groupId,
-  expense,
+  _expense,
 }: {
   isEdit?: boolean;
   groupId: string;
-  expense?: ExpenseResponseDto;
+  _expense?: ExpenseResponseDto;
 }) {
   const { mutate } = useSWRConfig();
 
   const { user } = useAuth();
 
-  const [isHandlingExpense, setIsHandlingExpense] = useState(false);
-  const [handlingExpenseError, setHandlingExpenseError] = useState<
-    string | null
-  >(null);
+  // const [isHandlingExpense, setIsHandlingExpense] = useState(false);
+  // const [handlingExpenseError, setHandlingExpenseError] = useState<
+  //   string | null
+  // >(null);
 
   //* --- State for Add Expense Form ---
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -49,7 +49,7 @@ export function AddOrEditExpenseSheet({
   const [expenseDate, setExpenseDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [date, setDate] = useState<Date>();
+  // const [date, setDate] = useState<Date>();
 
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [addExpenseError, setAddExpenseError] = useState<string | null>(null);
@@ -145,7 +145,7 @@ export function AddOrEditExpenseSheet({
     }
     if (!groupId || !members) return;
 
-    let expensePayload: Partial<CreateExpenseDto> = {
+    const expensePayload: Partial<CreateExpenseDto> = {
       description: expenseDescription,
       amount: amountNumber,
       transaction_date: expenseDate,
