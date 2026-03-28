@@ -1,0 +1,298 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Dark Ledger Design System ─── */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-body);
+  --font-heading: var(--font-heading);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --text-adaptive-sm: max(0.7em, 0.75rem);
+
+  /* Dark Ledger custom colors */
+  --color-deep: #0c0c0f;
+  --color-surface: #16161a;
+  --color-elevated: #1e1e24;
+  --color-amber: #f5a623;
+  --color-amber-dim: rgba(245, 166, 35, 0.15);
+  --color-amber-glow: rgba(245, 166, 35, 0.25);
+  --color-success: #2dd4a8;
+  --color-success-dim: rgba(45, 212, 168, 0.15);
+  --color-danger: #f45b69;
+  --color-danger-dim: rgba(244, 91, 105, 0.15);
+  --color-subtle: rgba(255, 255, 255, 0.08);
+  --color-text-primary: #ededef;
+  --color-text-secondary: #72727e;
+  --color-text-tertiary: #4a4a55;
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #0c0c0f;
+  --foreground: #ededef;
+  --card: #16161a;
+  --card-foreground: #ededef;
+  --popover: #1e1e24;
+  --popover-foreground: #ededef;
+  --primary: #f5a623;
+  --primary-foreground: #0c0c0f;
+  --secondary: #1e1e24;
+  --secondary-foreground: #ededef;
+  --muted: #1e1e24;
+  --muted-foreground: #72727e;
+  --accent: #1e1e24;
+  --accent-foreground: #ededef;
+  --destructive: #f45b69;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #f5a623;
+  --chart-1: #f5a623;
+  --chart-2: #2dd4a8;
+  --chart-3: #f45b69;
+  --chart-4: #7c6adb;
+  --chart-5: #3b82f6;
+  --sidebar: #16161a;
+  --sidebar-foreground: #ededef;
+  --sidebar-primary: #f5a623;
+  --sidebar-primary-foreground: #0c0c0f;
+  --sidebar-accent: #1e1e24;
+  --sidebar-accent-foreground: #ededef;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #f5a623;
+  --text-adaptive-sm: max(0.7em, 0.75rem);
+}
+
+/* ─── Keyframe Animations ─── */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(245, 166, 35, 0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes grain {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-5%, -10%);
+  }
+  20% {
+    transform: translate(-15%, 5%);
+  }
+  30% {
+    transform: translate(7%, -25%);
+  }
+  40% {
+    transform: translate(-5%, 25%);
+  }
+  50% {
+    transform: translate(-15%, 10%);
+  }
+  60% {
+    transform: translate(15%, 0%);
+  }
+  70% {
+    transform: translate(0%, 15%);
+  }
+  80% {
+    transform: translate(3%, 35%);
+  }
+  90% {
+    transform: translate(-10%, 10%);
+  }
+}
+
+/* ─── Base Styles ─── */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-deep text-text-primary;
+    font-family: var(--font-body), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading), sans-serif;
+  }
+}
+
+/* ─── Utility Classes ─── */
+
+@layer utilities {
+  /* Glass card effect */
+  .glass-card {
+    background: rgba(22, 22, 26, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+  }
+
+  .glass-card-elevated {
+    background: rgba(30, 30, 36, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+  }
+
+  /* Amber glow effects */
+  .amber-glow {
+    box-shadow:
+      0 0 20px rgba(245, 166, 35, 0.2),
+      0 0 60px rgba(245, 166, 35, 0.08);
+  }
+
+  .amber-glow-subtle {
+    box-shadow: 0 0 12px rgba(245, 166, 35, 0.12);
+  }
+
+  .amber-text-glow {
+    text-shadow:
+      0 0 20px rgba(245, 166, 35, 0.4),
+      0 0 40px rgba(245, 166, 35, 0.15);
+  }
+
+  /* Skeleton loading shimmer */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(30, 30, 36, 0.5) 25%,
+      rgba(45, 45, 55, 0.5) 50%,
+      rgba(30, 30, 36, 0.5) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: 0.5rem;
+  }
+
+  /* Staggered animations */
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-pulse-amber {
+    animation: pulse-amber 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Mesh gradient background */
+  .mesh-bg {
+    background:
+      radial-gradient(
+        ellipse at 20% 0%,
+        rgba(245, 166, 35, 0.06) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 80% 100%,
+        rgba(125, 106, 219, 0.04) 0%,
+        transparent 50%
+      ),
+      #0c0c0f;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}

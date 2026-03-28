@@ -1,0 +1,11 @@
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@firebase/util'
+  - '@swc/core'
+  - esbuild
+  - msw
+  - protobufjs
+  - rxdb
